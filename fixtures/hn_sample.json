@@ -1,0 +1,41 @@
+{
+  "hits": [
+    {
+      "objectID": "12345678",
+      "title": "Claude Code - AI-powered coding assistant from Anthropic",
+      "url": "https://github.com/anthropics/claude-code",
+      "author": "hackernews_user",
+      "created_at_i": 1737936000,
+      "points": 450,
+      "num_comments": 125,
+      "story_text": null
+    },
+    {
+      "objectID": "12345679",
+      "title": "The state of AI code assistants in 2026",
+      "url": "https://blog.example.com/ai-code-assistants-2026",
+      "author": "tech_blogger",
+      "created_at_i": 1737849600,
+      "points": 280,
+      "num_comments": 87,
+      "story_text": null
+    },
+    {
+      "objectID": "12345680",
+      "title": "Show HN: AI-powered code review tool",
+      "url": "",
+      "author": "startup_founder",
+      "created_at_i": 1737763200,
+      "points": 156,
+      "num_comments": 42,
+      "story_text": "I built this to help teams review code faster..."
+    }
+  ],
+  "nbHits": 3,
+  "page": 0,
+  "nbPages": 1,
+  "hitsPerPage": 30,
+  "exhaustiveNbHits": true,
+  "query": "Claude Code",
+  "params": "query=Claude%20Code&tags=story"
+}

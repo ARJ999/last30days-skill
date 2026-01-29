@@ -5,6 +5,9 @@ from typing import List, Set, Tuple, Union
 
 from . import schema
 
+# Type alias for all item types that support deduplication
+DedupeItem = Union[schema.RedditItem, schema.XItem, schema.HNItem]
+
 
 def normalize_text(text: str) -> str:
     """Normalize text for comparison.
@@ -36,16 +39,18 @@ def jaccard_similarity(set1: Set[str], set2: Set[str]) -> float:
     return intersection / union if union > 0 else 0.0
 
 
-def get_item_text(item: Union[schema.RedditItem, schema.XItem]) -> str:
+def get_item_text(item: DedupeItem) -> str:
     """Get comparable text from an item."""
     if isinstance(item, schema.RedditItem):
         return item.title
-    else:
+    elif isinstance(item, schema.HNItem):
+        return item.title
+    else:  # XItem
         return item.text
 
 
 def find_duplicates(
-    items: List[Union[schema.RedditItem, schema.XItem]],
+    items: List[DedupeItem],
     threshold: float = 0.7,
 ) -> List[Tuple[int, int]]:
     """Find near-duplicate pairs in items.
@@ -72,9 +77,9 @@ def find_duplicates(
 
 
 def dedupe_items(
-    items: List[Union[schema.RedditItem, schema.XItem]],
+    items: List[DedupeItem],
     threshold: float = 0.7,
-) -> List[Union[schema.RedditItem, schema.XItem]]:
+) -> List[DedupeItem]:
     """Remove near-duplicates, keeping highest-scored item.
 
     Args:
@@ -117,4 +122,12 @@ def dedupe_x(
     threshold: float = 0.7,
 ) -> List[schema.XItem]:
     """Dedupe X items."""
+    return dedupe_items(items, threshold)
+
+
+def dedupe_hn(
+    items: List[schema.HNItem],
+    threshold: float = 0.7,
+) -> List[schema.HNItem]:
+    """Dedupe HackerNews items."""
     return dedupe_items(items, threshold)

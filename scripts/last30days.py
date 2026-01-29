@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-last30days - Research a topic from the last 30 days on Reddit + X.
+last30days - Research a topic from the last 30 days on Reddit, X, and HackerNews.
 
 Usage:
     python3 last30days.py <topic> [options]
@@ -10,8 +10,10 @@ Options:
     --emit=MODE         Output mode: compact|json|md|context|path (default: compact)
     --sources=MODE      Source selection: auto|reddit|x|both (default: auto)
     --quick             Faster research with fewer sources (8-12 each)
-    --deep              Comprehensive research with more sources (50-70 Reddit, 40-60 X)
+    --deep              Comprehensive research with more sources (50-70 Reddit, 40-60 X, 40-60 HN)
     --debug             Enable verbose debug logging
+
+Note: HackerNews is automatically searched alongside other sources (no API key required).
 """
 
 import argparse
@@ -30,6 +32,7 @@ from lib import (
     dates,
     dedupe,
     env,
+    hn,
     http,
     models,
     normalize,
@@ -158,6 +161,47 @@ def _search_x(
     return x_items, raw_xai, x_error
 
 
+def _search_hn(
+    topic: str,
+    from_date: str,
+    to_date: str,
+    depth: str,
+    mock: bool,
+) -> tuple:
+    """Search HackerNews via Algolia API (runs in thread).
+
+    HackerNews is free (no API key required) and provides valuable
+    developer community insights.
+
+    Returns:
+        Tuple of (hn_items, raw_hn, error)
+    """
+    raw_hn = None
+    hn_error = None
+
+    if mock:
+        raw_hn = load_fixture("hn_sample.json")
+    else:
+        try:
+            raw_hn = hn.search_hn(
+                topic,
+                from_date,
+                to_date,
+                depth=depth,
+            )
+        except http.HTTPError as e:
+            raw_hn = {"error": str(e)}
+            hn_error = f"API error: {e}"
+        except Exception as e:
+            raw_hn = {"error": str(e)}
+            hn_error = f"{type(e).__name__}: {e}"
+
+    # Parse response
+    hn_items = hn.parse_hn_response(raw_hn or {})
+
+    return hn_items, raw_hn, hn_error
+
+
 def run_research(
     topic: str,
     sources: str,
@@ -172,18 +216,21 @@ def run_research(
     """Run the research pipeline.
 
     Returns:
-        Tuple of (reddit_items, x_items, web_needed, raw_openai, raw_xai, raw_reddit_enriched, reddit_error, x_error)
+        Tuple of (reddit_items, x_items, hn_items, web_needed, raw_openai, raw_xai, raw_hn, raw_reddit_enriched, reddit_error, x_error, hn_error)
 
     Note: web_needed is True when WebSearch should be performed by Claude.
     The script outputs a marker and Claude handles WebSearch in its session.
     """
     reddit_items = []
     x_items = []
+    hn_items = []
     raw_openai = None
     raw_xai = None
+    raw_hn = None
     raw_reddit_enriched = []
     reddit_error = None
     x_error = None
+    hn_error = None
 
     # Check if WebSearch is needed (always needed in web-only mode)
     web_needed = sources in ("all", "web", "reddit-web", "x-web")
@@ -193,18 +240,21 @@ def run_research(
         if progress:
             progress.start_web_only()
             progress.end_web_only()
-        return reddit_items, x_items, True, raw_openai, raw_xai, raw_reddit_enriched, reddit_error, x_error
+        return reddit_items, x_items, hn_items, True, raw_openai, raw_xai, raw_hn, raw_reddit_enriched, reddit_error, x_error, hn_error
 
     # Determine which searches to run
     run_reddit = sources in ("both", "reddit", "all", "reddit-web")
     run_x = sources in ("both", "x", "all", "x-web")
+    # HN is free (no API key), run it whenever we're doing any research
+    run_hn = sources not in ("web",)
 
-    # Run Reddit and X searches in parallel
+    # Run Reddit, X, and HN searches in parallel
     reddit_future = None
     x_future = None
+    hn_future = None
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        # Submit both searches
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        # Submit all searches
         if run_reddit:
             if progress:
                 progress.start_reddit()
@@ -219,6 +269,13 @@ def run_research(
             x_future = executor.submit(
                 _search_x, topic, config, selected_models,
                 from_date, to_date, depth, mock
+            )
+
+        if run_hn:
+            if progress:
+                progress.start_hn()
+            hn_future = executor.submit(
+                _search_hn, topic, from_date, to_date, depth, mock
             )
 
         # Collect results
@@ -245,6 +302,18 @@ def run_research(
                     progress.show_error(f"X error: {e}")
             if progress:
                 progress.end_x(len(x_items))
+
+        if hn_future:
+            try:
+                hn_items, raw_hn, hn_error = hn_future.result()
+                if hn_error and progress:
+                    progress.show_error(f"HN error: {hn_error}")
+            except Exception as e:
+                hn_error = f"{type(e).__name__}: {e}"
+                if progress:
+                    progress.show_error(f"HN error: {e}")
+            if progress:
+                progress.end_hn(len(hn_items))
 
     # Enrich Reddit items with real data (parallel for performance)
     if reddit_items:
@@ -284,7 +353,7 @@ def run_research(
         if progress:
             progress.end_reddit_enrich()
 
-    return reddit_items, x_items, web_needed, raw_openai, raw_xai, raw_reddit_enriched, reddit_error, x_error
+    return reddit_items, x_items, hn_items, web_needed, raw_openai, raw_xai, raw_hn, raw_reddit_enriched, reddit_error, x_error, hn_error
 
 
 def main():
@@ -423,7 +492,7 @@ def main():
         mode = sources
 
     # Run research
-    reddit_items, x_items, web_needed, raw_openai, raw_xai, raw_reddit_enriched, reddit_error, x_error = run_research(
+    reddit_items, x_items, hn_items, web_needed, raw_openai, raw_xai, raw_hn, raw_reddit_enriched, reddit_error, x_error, hn_error = run_research(
         args.topic,
         sources,
         config,
@@ -441,23 +510,28 @@ def main():
     # Normalize items
     normalized_reddit = normalize.normalize_reddit_items(reddit_items, from_date, to_date)
     normalized_x = normalize.normalize_x_items(x_items, from_date, to_date)
+    normalized_hn = normalize.normalize_hn_items(hn_items, from_date, to_date)
 
     # Hard date filter: exclude items with verified dates outside the range
     # This is the safety net - even if prompts let old content through, this filters it
     filtered_reddit = normalize.filter_by_date_range(normalized_reddit, from_date, to_date)
     filtered_x = normalize.filter_by_date_range(normalized_x, from_date, to_date)
+    filtered_hn = normalize.filter_by_date_range(normalized_hn, from_date, to_date)
 
     # Score items
     scored_reddit = score.score_reddit_items(filtered_reddit)
     scored_x = score.score_x_items(filtered_x)
+    scored_hn = score.score_hn_items(filtered_hn)
 
     # Sort items
     sorted_reddit = score.sort_items(scored_reddit)
     sorted_x = score.sort_items(scored_x)
+    sorted_hn = score.sort_items(scored_hn)
 
     # Dedupe items
     deduped_reddit = dedupe.dedupe_reddit(sorted_reddit)
     deduped_x = dedupe.dedupe_x(sorted_x)
+    deduped_hn = dedupe.dedupe_hn(sorted_hn)
 
     progress.end_processing()
 
@@ -472,8 +546,10 @@ def main():
     )
     report.reddit = deduped_reddit
     report.x = deduped_x
+    report.hn = deduped_hn
     report.reddit_error = reddit_error
     report.x_error = x_error
+    report.hn_error = hn_error
 
     # Compute data quality metrics
     report.data_quality = schema.compute_data_quality(report)
@@ -482,13 +558,13 @@ def main():
     report.context_snippet_md = render.render_context_snippet(report)
 
     # Write outputs
-    render.write_outputs(report, raw_openai, raw_xai, raw_reddit_enriched)
+    render.write_outputs(report, raw_openai, raw_xai, raw_hn, raw_reddit_enriched)
 
     # Show completion
     if sources == "web":
         progress.show_web_only_complete()
     else:
-        progress.show_complete(len(deduped_reddit), len(deduped_x))
+        progress.show_complete(len(deduped_reddit), len(deduped_x), len(deduped_hn))
 
     # Output result
     output_result(report, args.emit, web_needed, args.topic, from_date, to_date, missing_keys)

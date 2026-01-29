@@ -18,14 +18,16 @@ def _assess_data_freshness(report: schema.Report) -> dict:
     """Assess how much data is actually from the last 30 days."""
     reddit_recent = sum(1 for r in report.reddit if r.date and r.date >= report.range_from)
     x_recent = sum(1 for x in report.x if x.date and x.date >= report.range_from)
+    hn_recent = sum(1 for h in report.hn if h.date and h.date >= report.range_from)
     web_recent = sum(1 for w in report.web if w.date and w.date >= report.range_from)
 
-    total_recent = reddit_recent + x_recent + web_recent
-    total_items = len(report.reddit) + len(report.x) + len(report.web)
+    total_recent = reddit_recent + x_recent + hn_recent + web_recent
+    total_items = len(report.reddit) + len(report.x) + len(report.hn) + len(report.web)
 
     return {
         "reddit_recent": reddit_recent,
         "x_recent": x_recent,
+        "hn_recent": hn_recent,
         "web_recent": web_recent,
         "total_recent": total_recent,
         "total_items": total_items,
@@ -385,6 +387,7 @@ def write_outputs(
     report: schema.Report,
     raw_openai: Optional[dict] = None,
     raw_xai: Optional[dict] = None,
+    raw_hn: Optional[dict] = None,
     raw_reddit_enriched: Optional[list] = None,
 ):
     """Write all output files.
@@ -393,6 +396,7 @@ def write_outputs(
         report: Report data
         raw_openai: Raw OpenAI API response
         raw_xai: Raw xAI API response
+        raw_hn: Raw HackerNews Algolia API response
         raw_reddit_enriched: Raw enriched Reddit thread data
     """
     ensure_output_dir()
@@ -417,6 +421,10 @@ def write_outputs(
     if raw_xai:
         with open(OUTPUT_DIR / "raw_xai.json", 'w') as f:
             json.dump(raw_xai, f, indent=2)
+
+    if raw_hn:
+        with open(OUTPUT_DIR / "raw_hn.json", 'w') as f:
+            json.dump(raw_hn, f, indent=2)
 
     if raw_reddit_enriched:
         with open(OUTPUT_DIR / "raw_reddit_threads_enriched.json", 'w') as f:

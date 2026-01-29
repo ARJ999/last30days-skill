@@ -56,6 +56,16 @@ X_MESSAGES = [
     "Reading between the posts...",
 ]
 
+HN_MESSAGES = [
+    "Browsing HackerNews discussions...",
+    "Reading developer opinions...",
+    "Scanning tech discussions...",
+    "Finding the deep dives...",
+    "Exploring Show HN posts...",
+    "Mining developer insights...",
+    "Checking what hackers are saying...",
+]
+
 ENRICHING_MESSAGES = [
     "Getting the juicy details...",
     "Fetching engagement metrics...",
@@ -237,6 +247,15 @@ class ProgressDisplay:
         if self.spinner:
             self.spinner.stop(f"{Colors.CYAN}X{Colors.RESET} Found {count} posts")
 
+    def start_hn(self):
+        msg = random.choice(HN_MESSAGES)
+        self.spinner = Spinner(f"{Colors.GREEN}HN{Colors.RESET} {msg}", Colors.GREEN)
+        self.spinner.start()
+
+    def end_hn(self, count: int):
+        if self.spinner:
+            self.spinner.stop(f"{Colors.GREEN}HN{Colors.RESET} Found {count} stories")
+
     def start_processing(self):
         msg = random.choice(PROCESSING_MESSAGES)
         self.spinner = Spinner(f"{Colors.PURPLE}Processing{Colors.RESET} {msg}", Colors.PURPLE)
@@ -246,15 +265,16 @@ class ProgressDisplay:
         if self.spinner:
             self.spinner.stop()
 
-    def show_complete(self, reddit_count: int, x_count: int):
+    def show_complete(self, reddit_count: int, x_count: int, hn_count: int = 0):
         elapsed = time.time() - self.start_time
         if IS_TTY:
             sys.stderr.write(f"\n{Colors.GREEN}{Colors.BOLD}✓ Research complete{Colors.RESET} ")
             sys.stderr.write(f"{Colors.DIM}({elapsed:.1f}s){Colors.RESET}\n")
             sys.stderr.write(f"  {Colors.YELLOW}Reddit:{Colors.RESET} {reddit_count} threads  ")
-            sys.stderr.write(f"{Colors.CYAN}X:{Colors.RESET} {x_count} posts\n\n")
+            sys.stderr.write(f"{Colors.CYAN}X:{Colors.RESET} {x_count} posts  ")
+            sys.stderr.write(f"{Colors.GREEN}HN:{Colors.RESET} {hn_count} stories\n\n")
         else:
-            sys.stderr.write(f"✓ Research complete ({elapsed:.1f}s) - Reddit: {reddit_count} threads, X: {x_count} posts\n")
+            sys.stderr.write(f"✓ Research complete ({elapsed:.1f}s) - Reddit: {reddit_count} threads, X: {x_count} posts, HN: {hn_count} stories\n")
         sys.stderr.flush()
 
     def show_cached(self, age_hours: float = None):

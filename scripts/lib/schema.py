@@ -382,6 +382,29 @@ class Report:
                 score=w.get('score', 0),
             ))
 
+        # Reconstruct HN items
+        hn_items = []
+        for h in data.get('hn', []):
+            eng = None
+            if h.get('engagement'):
+                eng = Engagement(**h['engagement'])
+            subs = SubScores(**h.get('subs', {})) if h.get('subs') else SubScores()
+            hn_items.append(HNItem(
+                id=h['id'],
+                title=h['title'],
+                url=h['url'],
+                hn_url=h.get('hn_url', ''),
+                author=h.get('author', ''),
+                date=h.get('date'),
+                date_confidence=h.get('date_confidence', 'low'),
+                engagement=eng,
+                engagement_verified=h.get('engagement_verified', True),
+                relevance=h.get('relevance', 0.5),
+                why_relevant=h.get('why_relevant', ''),
+                subs=subs,
+                score=h.get('score', 0),
+            ))
+
         return cls(
             topic=data['topic'],
             range_from=range_from,
@@ -392,12 +415,14 @@ class Report:
             xai_model_used=data.get('xai_model_used'),
             reddit=reddit_items,
             x=x_items,
+            hn=hn_items,
             web=web_items,
             best_practices=data.get('best_practices', []),
             prompt_pack=data.get('prompt_pack', []),
             context_snippet_md=data.get('context_snippet_md', ''),
             reddit_error=data.get('reddit_error'),
             x_error=data.get('x_error'),
+            hn_error=data.get('hn_error'),
             web_error=data.get('web_error'),
             from_cache=data.get('from_cache', False),
             cache_age_hours=data.get('cache_age_hours'),

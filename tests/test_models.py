@@ -80,11 +80,15 @@ class TestSelectOpenAIModel(unittest.TestCase):
 
 class TestSelectXAIModel(unittest.TestCase):
     def test_latest_policy(self):
+        # Clear cache first to avoid interference
+        from lib import cache
+        cache.MODEL_CACHE_FILE.unlink(missing_ok=True)
         result = models.select_xai_model(
             "fake-key",
             policy="latest"
         )
-        self.assertEqual(result, "grok-4-latest")
+        # Latest now defaults to grok-4-1 (most capable with x_search)
+        self.assertEqual(result, "grok-4-1")
 
     def test_stable_policy(self):
         # Clear cache first to avoid interference
@@ -94,7 +98,8 @@ class TestSelectXAIModel(unittest.TestCase):
             "fake-key",
             policy="stable"
         )
-        self.assertEqual(result, "grok-4")
+        # Stable now uses grok-4-1-fast
+        self.assertEqual(result, "grok-4-1-fast")
 
     def test_pinned_policy(self):
         result = models.select_xai_model(
@@ -120,15 +125,18 @@ class TestGetModels(unittest.TestCase):
         self.assertIsNone(result["xai"])
 
     def test_both_keys(self):
+        # Clear cache first
+        from lib import cache
+        cache.MODEL_CACHE_FILE.unlink(missing_ok=True)
         config = {
             "OPENAI_API_KEY": "sk-test",
             "XAI_API_KEY": "xai-test",
         }
         mock_openai = [{"id": "gpt-5.2", "created": 1704067200}]
-        mock_xai = [{"id": "grok-4-latest", "created": 1704067200}]
+        mock_xai = [{"id": "grok-4-1", "created": 1704067200}]
         result = models.get_models(config, mock_openai, mock_xai)
         self.assertEqual(result["openai"], "gpt-5.2")
-        self.assertEqual(result["xai"], "grok-4-latest")
+        self.assertEqual(result["xai"], "grok-4-1")
 
 
 if __name__ == "__main__":

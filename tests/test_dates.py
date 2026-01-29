@@ -100,10 +100,17 @@ class TestRecencyScore(unittest.TestCase):
         result = dates.recency_score(old_date)
         self.assertEqual(result, 0)
 
-    def test_15_days_ago_is_50(self):
+    def test_15_days_ago_uses_exponential_scoring(self):
+        """Exponential scoring gives lower score to 15-day-old content.
+
+        With tiered scoring, 15 days falls in the 'low tier' (days 15-30)
+        which starts at 49 and declines. Should be around 49 for day 15.
+        """
         mid_date = (datetime.now(timezone.utc).date() - timedelta(days=15)).isoformat()
         result = dates.recency_score(mid_date)
-        self.assertEqual(result, 50)
+        # With exponential scoring, 15 days ago is around 49 (start of low tier)
+        self.assertGreater(result, 40)
+        self.assertLess(result, 55)
 
     def test_none_date_is_0(self):
         result = dates.recency_score(None)

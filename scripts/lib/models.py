@@ -7,13 +7,14 @@ from . import cache, http
 
 # OpenAI API
 OPENAI_MODELS_URL = "https://api.openai.com/v1/models"
-OPENAI_FALLBACK_MODELS = ["gpt-5.2", "gpt-5.1", "gpt-5", "gpt-4o"]
+# Prioritize latest GPT-5 series for highest quality
+OPENAI_FALLBACK_MODELS = ["gpt-5.5", "gpt-5.3", "gpt-5.2", "gpt-5.1", "gpt-5", "gpt-4o"]
 
 # xAI API - Agent Tools API requires grok-4 family
 XAI_MODELS_URL = "https://api.x.ai/v1/models"
 XAI_ALIASES = {
-    "latest": "grok-4-1-fast",  # Required for x_search tool
-    "stable": "grok-4-1-fast",
+    "latest": "grok-4-1",       # Latest and most capable for x_search
+    "stable": "grok-4-1-fast",  # Stable fallback
 }
 
 
@@ -32,15 +33,18 @@ def parse_version(model_id: str) -> Optional[Tuple[int, ...]]:
 
 
 def is_mainline_openai_model(model_id: str) -> bool:
-    """Check if model is a mainline GPT model (not mini/nano/chat/codex/pro)."""
+    """Check if model is a mainline GPT model (not mini/nano/chat/codex/pro).
+
+    Prioritizes GPT-5+ series for highest quality outputs.
+    """
     model_lower = model_id.lower()
 
-    # Must be gpt-5 series
-    if not re.match(r'^gpt-5(\.\d+)*$', model_lower):
+    # Accept gpt-5 and higher series (gpt-5, gpt-5.1, gpt-5.5, gpt-6, etc.)
+    if not re.match(r'^gpt-([5-9]|\d{2,})(\.\d+)*$', model_lower):
         return False
 
-    # Exclude variants
-    excludes = ['mini', 'nano', 'chat', 'codex', 'pro', 'preview', 'turbo']
+    # Exclude variants that may have reduced capabilities
+    excludes = ['mini', 'nano', 'chat', 'codex', 'pro', 'preview', 'turbo', 'instruct']
     for exc in excludes:
         if exc in model_lower:
             return False
@@ -107,6 +111,13 @@ def select_openai_model(
     return selected
 
 
+def is_grok_search_capable(model_id: str) -> bool:
+    """Check if model supports x_search tool (grok-4 family required)."""
+    model_lower = model_id.lower()
+    # grok-4, grok-4-1, grok-4-1-fast, etc. support x_search
+    return re.match(r'^grok-4(\.\d+|-\d+)*(-fast)?$', model_lower) is not None
+
+
 def select_xai_model(
     api_key: str,
     policy: str = "latest",
@@ -114,6 +125,8 @@ def select_xai_model(
     mock_models: Optional[List[Dict]] = None,
 ) -> str:
     """Select the best xAI model based on policy.
+
+    Prioritizes the most capable grok-4+ models with x_search support.
 
     Args:
         api_key: xAI API key
@@ -127,21 +140,46 @@ def select_xai_model(
     if policy == "pinned" and pin:
         return pin
 
-    # Use alias system
-    if policy in XAI_ALIASES:
-        alias = XAI_ALIASES[policy]
+    # Check cache first
+    cached = cache.get_cached_model("xai")
+    if cached:
+        return cached
 
-        # Check cache first
-        cached = cache.get_cached_model("xai")
-        if cached:
-            return cached
+    # Try to fetch available models to find the latest
+    if mock_models is not None:
+        models = mock_models
+    else:
+        try:
+            headers = {"Authorization": f"Bearer {api_key}"}
+            response = http.get(XAI_MODELS_URL, headers=headers)
+            models = response.get("data", [])
+        except http.HTTPError:
+            # Fall back to known alias
+            selected = XAI_ALIASES.get(policy, XAI_ALIASES["latest"])
+            cache.set_cached_model("xai", selected)
+            return selected
 
-        # Cache the alias
-        cache.set_cached_model("xai", alias)
-        return alias
+    # Filter to x_search capable models (grok-4 family)
+    candidates = [m for m in models if is_grok_search_capable(m.get("id", ""))]
 
-    # Default to latest
-    return XAI_ALIASES["latest"]
+    if candidates:
+        # Sort by version (descending) - prefer non-fast for quality, then fast
+        def sort_key(m):
+            model_id = m.get("id", "")
+            version = parse_version(model_id) or (0,)
+            # Prefer non-fast variants for quality (-fast gets lower priority)
+            is_fast = 1 if "-fast" in model_id.lower() else 0
+            created = m.get("created", 0)
+            return (version, -is_fast, created)
+
+        candidates.sort(key=sort_key, reverse=True)
+        selected = candidates[0]["id"]
+    else:
+        # No candidates found, use alias
+        selected = XAI_ALIASES.get(policy, XAI_ALIASES["latest"])
+
+    cache.set_cached_model("xai", selected)
+    return selected
 
 
 def get_models(

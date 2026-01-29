@@ -246,27 +246,40 @@ def run_research(
             if progress:
                 progress.end_x(len(x_items))
 
-    # Enrich Reddit items with real data (sequential, but with error handling per-item)
+    # Enrich Reddit items with real data (parallel for performance)
     if reddit_items:
         if progress:
             progress.start_reddit_enrich(1, len(reddit_items))
 
-        for i, item in enumerate(reddit_items):
-            if progress and i > 0:
-                progress.update_reddit_enrich(i + 1, len(reddit_items))
-
+        # Use thread pool for parallel enrichment (5 workers for optimal throughput)
+        def enrich_item(args):
+            i, item = args
             try:
                 if mock:
                     mock_thread = load_fixture("reddit_thread_sample.json")
-                    reddit_items[i] = reddit_enrich.enrich_reddit_item(item, mock_thread)
+                    return i, reddit_enrich.enrich_reddit_item(item, mock_thread), None
                 else:
-                    reddit_items[i] = reddit_enrich.enrich_reddit_item(item)
+                    return i, reddit_enrich.enrich_reddit_item(item), None
             except Exception as e:
-                # Log but don't crash - keep the unenriched item
-                if progress:
-                    progress.show_error(f"Enrich failed for {item.get('url', 'unknown')}: {e}")
+                return i, item, str(e)
 
-            raw_reddit_enriched.append(reddit_items[i])
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {executor.submit(enrich_item, (i, item)): i
+                      for i, item in enumerate(reddit_items)}
+
+            completed = 0
+            for future in as_completed(futures):
+                i, enriched_item, error = future.result()
+                reddit_items[i] = enriched_item
+                completed += 1
+
+                if progress:
+                    progress.update_reddit_enrich(completed, len(reddit_items))
+
+                if error and progress:
+                    progress.show_error(f"Enrich failed for {enriched_item.get('url', 'unknown')}: {error}")
+
+        raw_reddit_enriched = list(reddit_items)
 
         if progress:
             progress.end_reddit_enrich()
@@ -461,6 +474,9 @@ def main():
     report.x = deduped_x
     report.reddit_error = reddit_error
     report.x_error = x_error
+
+    # Compute data quality metrics
+    report.data_quality = schema.compute_data_quality(report)
 
     # Generate context snippet
     report.context_snippet_md = render.render_context_snippet(report)

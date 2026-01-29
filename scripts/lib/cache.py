@@ -9,7 +9,7 @@ from typing import Any, Optional
 
 CACHE_DIR = Path.home() / ".cache" / "last30days"
 DEFAULT_TTL_HOURS = 24
-MODEL_CACHE_TTL_DAYS = 7
+MODEL_CACHE_TTL_DAYS = 1  # Check for new models daily to always use latest
 
 
 def ensure_cache_dir():

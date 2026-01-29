@@ -175,24 +175,58 @@ def extract_comment_insights(comments: List[Dict], limit: int = 7) -> List[str]:
     return insights
 
 
+def is_engagement_valid(submission: Dict[str, Any]) -> bool:
+    """Validate engagement metrics look reasonable.
+
+    Args:
+        submission: Reddit submission data
+
+    Returns:
+        True if engagement data appears valid
+    """
+    score = submission.get("score")
+    num_comments = submission.get("num_comments")
+    upvote_ratio = submission.get("upvote_ratio")
+
+    # Basic sanity checks
+    if score is not None and score < 0:
+        return False  # Invalid negative score (shouldn't happen)
+
+    if num_comments is not None and num_comments < 0:
+        return False  # Invalid
+
+    if upvote_ratio is not None and not (0 <= upvote_ratio <= 1):
+        return False  # Ratio must be 0-1
+
+    # If comments exist but score is 0, might be deleted post
+    if num_comments and num_comments > 0 and score == 0:
+        return False  # Likely deleted
+
+    return True
+
+
 def enrich_reddit_item(
     item: Dict[str, Any],
     mock_thread_data: Optional[Dict] = None,
 ) -> Dict[str, Any]:
     """Enrich a Reddit item with real engagement data.
 
+    Fetches actual engagement metrics from Reddit's JSON API
+    and marks the data as verified for quality scoring.
+
     Args:
         item: Reddit item dict
         mock_thread_data: Mock data for testing
 
     Returns:
-        Enriched item dict
+        Enriched item dict with engagement_verified flag
     """
     url = item.get("url", "")
 
     # Fetch thread data
     thread_data = fetch_thread_data(url, mock_thread_data)
     if not thread_data:
+        item["engagement_verified"] = False
         return item
 
     parsed = parse_thread_data(thread_data)
@@ -200,17 +234,21 @@ def enrich_reddit_item(
     comments = parsed.get("comments", [])
 
     # Update engagement metrics
-    if submission:
+    if submission and is_engagement_valid(submission):
         item["engagement"] = {
             "score": submission.get("score"),
             "num_comments": submission.get("num_comments"),
             "upvote_ratio": submission.get("upvote_ratio"),
         }
+        # Mark as verified - this is real data from Reddit
+        item["engagement_verified"] = True
 
-        # Update date from actual data
+        # Update date from actual data (most reliable source)
         created_utc = submission.get("created_utc")
         if created_utc:
             item["date"] = dates.timestamp_to_date(created_utc)
+    else:
+        item["engagement_verified"] = False
 
     # Get top comments
     top_comments = get_top_comments(comments)

@@ -52,6 +52,10 @@ DEPTH_CONFIG = {
 
 REDDIT_SEARCH_PROMPT = """Find Reddit discussion threads about: {topic}
 
+CRITICAL DATE REQUIREMENT:
+Only include threads posted between {from_date} and {to_date} (the last 30 days).
+EXCLUDE any thread older than {from_date}. This is non-negotiable.
+
 STEP 1: EXTRACT THE CORE SUBJECT
 Get the MAIN NOUN/PRODUCT/TOPIC:
 - "best nano banana prompting practices" → "nano banana"
@@ -59,24 +63,24 @@ Get the MAIN NOUN/PRODUCT/TOPIC:
 - "top Claude Code skills" → "Claude Code"
 DO NOT include "best", "top", "tips", "practices", "features" in your search.
 
-STEP 2: SEARCH BROADLY
-Search for the core subject:
-1. "[core subject] site:reddit.com"
-2. "reddit [core subject]"
-3. "[core subject] reddit"
+STEP 2: SEARCH WITH DATE FILTER
+Search for recent content only:
+1. "[core subject] site:reddit.com" - check post dates carefully
+2. "reddit [core subject] 2026" (use current year)
+3. Look for threads with recent activity indicators
 
-Return as many relevant threads as you find. We filter by date server-side.
-
-STEP 3: INCLUDE ALL MATCHES
-- Include ALL threads about the core subject
-- Set date to "YYYY-MM-DD" if you can determine it, otherwise null
-- We verify dates and filter old content server-side
-- DO NOT pre-filter aggressively - include anything relevant
+STEP 3: STRICT DATE VALIDATION
+For each thread found:
+- VERIFY the post date is within {from_date} to {to_date}
+- If you cannot confirm the date is recent, set date to null
+- DO NOT include threads you know are older than {from_date}
+- When in doubt about date, still include but set date: null
 
 REQUIRED: URLs must contain "/r/" AND "/comments/"
 REJECT: developers.reddit.com, business.reddit.com
+REJECT: Any thread with confirmed date before {from_date}
 
-Find {min_items}-{max_items} threads. Return MORE rather than fewer.
+Find {min_items}-{max_items} RECENT threads. Quality over quantity.
 
 Return JSON:
 {{
@@ -85,7 +89,7 @@ Return JSON:
       "title": "Thread title",
       "url": "https://www.reddit.com/r/sub/comments/xyz/title/",
       "subreddit": "subreddit_name",
-      "date": "YYYY-MM-DD or null",
+      "date": "YYYY-MM-DD or null if uncertain",
       "why_relevant": "Why relevant",
       "relevance": 0.85
     }}

@@ -108,9 +108,17 @@ def days_ago(date_str: Optional[str]) -> Optional[int]:
 
 
 def recency_score(date_str: Optional[str], max_days: int = 30) -> int:
-    """Calculate recency score (0-100).
+    """Calculate recency score (0-100) with exponential freshness bias.
 
-    0 days ago = 100, max_days ago = 0, clamped.
+    Strongly prioritizes recent content:
+    - Days 0-3: Premium tier (90-100) - Breaking/fresh content
+    - Days 4-7: High tier (75-89) - This week's discussions
+    - Days 8-14: Medium tier (50-74) - Recent but not fresh
+    - Days 15-30: Low tier (10-49) - Still valid but aging
+    - Beyond 30: Zero score
+
+    This ensures "today's" content dominates over week-old content,
+    matching user expectations for "latest" information.
     """
     age = days_ago(date_str)
     if age is None:
@@ -118,6 +126,40 @@ def recency_score(date_str: Optional[str], max_days: int = 30) -> int:
 
     if age < 0:
         return 100  # Future date (treat as today)
+    if age >= max_days:
+        return 0
+
+    # Exponential freshness bias with tiered scoring
+    if age <= 1:
+        # Today or yesterday: maximum freshness (98-100)
+        return 100 - age * 2
+    elif age <= 3:
+        # Days 2-3: premium tier (92-96)
+        return 96 - (age - 2) * 2
+    elif age <= 7:
+        # Days 4-7: high tier (76-90)
+        return 90 - (age - 4) * 3.5
+    elif age <= 14:
+        # Days 8-14: medium tier (50-74)
+        return 74 - (age - 8) * 3.4
+    else:
+        # Days 15-30: low tier (10-49)
+        # Linear decay for the remaining range
+        remaining = max_days - 15
+        return int(49 - (age - 15) * (39 / remaining))
+
+
+def recency_score_linear(date_str: Optional[str], max_days: int = 30) -> int:
+    """Calculate linear recency score (0-100) - legacy method.
+
+    0 days ago = 100, max_days ago = 0, clamped.
+    """
+    age = days_ago(date_str)
+    if age is None:
+        return 0
+
+    if age < 0:
+        return 100
     if age >= max_days:
         return 0
 

@@ -19,6 +19,9 @@ class Engagement:
     replies: Optional[int] = None
     quotes: Optional[int] = None
 
+    # HackerNews fields
+    points: Optional[int] = None  # HN upvotes
+
     def to_dict(self) -> Dict[str, Any]:
         d = {}
         if self.score is not None:
@@ -35,6 +38,8 @@ class Engagement:
             d['replies'] = self.replies
         if self.quotes is not None:
             d['quotes'] = self.quotes
+        if self.points is not None:
+            d['points'] = self.points
         return d if d else None
 
 
@@ -82,6 +87,7 @@ class RedditItem:
     date: Optional[str] = None
     date_confidence: str = "low"
     engagement: Optional[Engagement] = None
+    engagement_verified: bool = False  # True if engagement from Reddit JSON, not estimated
     top_comments: List[Comment] = field(default_factory=list)
     comment_insights: List[str] = field(default_factory=list)
     relevance: float = 0.5
@@ -98,6 +104,7 @@ class RedditItem:
             'date': self.date,
             'date_confidence': self.date_confidence,
             'engagement': self.engagement.to_dict() if self.engagement else None,
+            'engagement_verified': self.engagement_verified,
             'top_comments': [c.to_dict() for c in self.top_comments],
             'comment_insights': self.comment_insights,
             'relevance': self.relevance,
@@ -117,6 +124,7 @@ class XItem:
     date: Optional[str] = None
     date_confidence: str = "low"
     engagement: Optional[Engagement] = None
+    engagement_verified: bool = False  # True if engagement from X API directly
     relevance: float = 0.5
     why_relevant: str = ""
     subs: SubScores = field(default_factory=SubScores)
@@ -131,6 +139,42 @@ class XItem:
             'date': self.date,
             'date_confidence': self.date_confidence,
             'engagement': self.engagement.to_dict() if self.engagement else None,
+            'engagement_verified': self.engagement_verified,
+            'relevance': self.relevance,
+            'why_relevant': self.why_relevant,
+            'subs': self.subs.to_dict(),
+            'score': self.score,
+        }
+
+
+@dataclass
+class HNItem:
+    """Normalized HackerNews item."""
+    id: str
+    title: str
+    url: str
+    hn_url: str  # HackerNews discussion link
+    author: str
+    date: Optional[str] = None
+    date_confidence: str = "low"
+    engagement: Optional[Engagement] = None
+    engagement_verified: bool = True  # HN data is always from API
+    relevance: float = 0.5
+    why_relevant: str = ""
+    subs: SubScores = field(default_factory=SubScores)
+    score: int = 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'id': self.id,
+            'title': self.title,
+            'url': self.url,
+            'hn_url': self.hn_url,
+            'author': self.author,
+            'date': self.date,
+            'date_confidence': self.date_confidence,
+            'engagement': self.engagement.to_dict() if self.engagement else None,
+            'engagement_verified': self.engagement_verified,
             'relevance': self.relevance,
             'why_relevant': self.why_relevant,
             'subs': self.subs.to_dict(),
@@ -170,17 +214,51 @@ class WebSearchItem:
 
 
 @dataclass
+class DataQuality:
+    """Data quality metrics for transparency."""
+    total_items: int = 0
+    verified_dates_count: int = 0
+    verified_engagement_count: int = 0
+    avg_recency_days: float = 0.0
+    sources_available: List[str] = field(default_factory=list)
+    sources_failed: List[str] = field(default_factory=list)
+    fallback_models_used: List[str] = field(default_factory=list)
+
+    @property
+    def verified_dates_percent(self) -> float:
+        return (self.verified_dates_count / self.total_items * 100) if self.total_items > 0 else 0
+
+    @property
+    def verified_engagement_percent(self) -> float:
+        return (self.verified_engagement_count / self.total_items * 100) if self.total_items > 0 else 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'total_items': self.total_items,
+            'verified_dates_count': self.verified_dates_count,
+            'verified_dates_percent': round(self.verified_dates_percent, 1),
+            'verified_engagement_count': self.verified_engagement_count,
+            'verified_engagement_percent': round(self.verified_engagement_percent, 1),
+            'avg_recency_days': round(self.avg_recency_days, 1),
+            'sources_available': self.sources_available,
+            'sources_failed': self.sources_failed,
+            'fallback_models_used': self.fallback_models_used,
+        }
+
+
+@dataclass
 class Report:
     """Full research report."""
     topic: str
     range_from: str
     range_to: str
     generated_at: str
-    mode: str  # 'reddit-only', 'x-only', 'both', 'web-only', etc.
+    mode: str  # 'reddit-only', 'x-only', 'both', 'web-only', 'all', etc.
     openai_model_used: Optional[str] = None
     xai_model_used: Optional[str] = None
     reddit: List[RedditItem] = field(default_factory=list)
     x: List[XItem] = field(default_factory=list)
+    hn: List[HNItem] = field(default_factory=list)  # HackerNews items
     web: List[WebSearchItem] = field(default_factory=list)
     best_practices: List[str] = field(default_factory=list)
     prompt_pack: List[str] = field(default_factory=list)
@@ -188,10 +266,13 @@ class Report:
     # Status tracking
     reddit_error: Optional[str] = None
     x_error: Optional[str] = None
+    hn_error: Optional[str] = None  # HackerNews error
     web_error: Optional[str] = None
     # Cache info
     from_cache: bool = False
     cache_age_hours: Optional[float] = None
+    # Data quality metrics
+    data_quality: Optional[DataQuality] = None
 
     def to_dict(self) -> Dict[str, Any]:
         d = {
@@ -206,6 +287,7 @@ class Report:
             'xai_model_used': self.xai_model_used,
             'reddit': [r.to_dict() for r in self.reddit],
             'x': [x.to_dict() for x in self.x],
+            'hn': [h.to_dict() for h in self.hn],
             'web': [w.to_dict() for w in self.web],
             'best_practices': self.best_practices,
             'prompt_pack': self.prompt_pack,
@@ -215,12 +297,16 @@ class Report:
             d['reddit_error'] = self.reddit_error
         if self.x_error:
             d['x_error'] = self.x_error
+        if self.hn_error:
+            d['hn_error'] = self.hn_error
         if self.web_error:
             d['web_error'] = self.web_error
         if self.from_cache:
             d['from_cache'] = self.from_cache
         if self.cache_age_hours is not None:
             d['cache_age_hours'] = self.cache_age_hours
+        if self.data_quality:
+            d['data_quality'] = self.data_quality.to_dict()
         return d
 
     @classmethod
@@ -247,6 +333,7 @@ class Report:
                 date=r.get('date'),
                 date_confidence=r.get('date_confidence', 'low'),
                 engagement=eng,
+                engagement_verified=r.get('engagement_verified', False),
                 top_comments=comments,
                 comment_insights=r.get('comment_insights', []),
                 relevance=r.get('relevance', 0.5),
@@ -270,6 +357,7 @@ class Report:
                 date=x.get('date'),
                 date_confidence=x.get('date_confidence', 'low'),
                 engagement=eng,
+                engagement_verified=x.get('engagement_verified', False),
                 relevance=x.get('relevance', 0.5),
                 why_relevant=x.get('why_relevant', ''),
                 subs=subs,
@@ -333,4 +421,75 @@ def create_report(
         mode=mode,
         openai_model_used=openai_model,
         xai_model_used=xai_model,
+    )
+
+
+def compute_data_quality(report: Report) -> DataQuality:
+    """Compute data quality metrics for a report.
+
+    Args:
+        report: The report to analyze
+
+    Returns:
+        DataQuality metrics object
+    """
+    all_items = list(report.reddit) + list(report.x) + list(report.hn) + list(report.web)
+    total = len(all_items)
+
+    if total == 0:
+        return DataQuality(total_items=0)
+
+    # Count verified dates (high confidence)
+    verified_dates = sum(1 for item in all_items if item.date_confidence == "high")
+
+    # Count verified engagement
+    verified_engagement = 0
+    for item in report.reddit:
+        if item.engagement_verified:
+            verified_engagement += 1
+    for item in report.x:
+        if item.engagement_verified:
+            verified_engagement += 1
+    for item in report.hn:
+        if item.engagement_verified:
+            verified_engagement += 1
+    # WebSearch items don't have engagement
+
+    # Calculate average recency
+    from . import dates as dates_module
+    recency_days = []
+    for item in all_items:
+        if item.date:
+            age = dates_module.days_ago(item.date)
+            if age is not None:
+                recency_days.append(age)
+    avg_recency = sum(recency_days) / len(recency_days) if recency_days else 30.0
+
+    # Determine sources used
+    sources_available = []
+    sources_failed = []
+    if report.reddit:
+        sources_available.append("reddit")
+    elif report.reddit_error:
+        sources_failed.append("reddit")
+    if report.x:
+        sources_available.append("x")
+    elif report.x_error:
+        sources_failed.append("x")
+    if report.hn:
+        sources_available.append("hn")
+    elif report.hn_error:
+        sources_failed.append("hn")
+    if report.web:
+        sources_available.append("web")
+    elif report.web_error:
+        sources_failed.append("web")
+
+    return DataQuality(
+        total_items=total,
+        verified_dates_count=verified_dates,
+        verified_engagement_count=verified_engagement,
+        avg_recency_days=avg_recency,
+        sources_available=sources_available,
+        sources_failed=sources_failed,
     )

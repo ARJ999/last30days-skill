@@ -98,6 +98,7 @@ def normalize_reddit_items(
             date=date_str,
             date_confidence=date_confidence,
             engagement=engagement,
+            engagement_verified=item.get("engagement_verified", False),
             top_comments=top_comments,
             comment_insights=item.get("comment_insights", []),
             relevance=item.get("relevance", 0.5),
@@ -140,6 +141,11 @@ def normalize_x_items(
         date_str = item.get("date")
         date_confidence = dates.get_date_confidence(date_str, from_date, to_date)
 
+        # X engagement from API is considered verified if present
+        engagement_verified = engagement is not None and (
+            engagement.likes is not None or engagement.reposts is not None
+        )
+
         normalized.append(schema.XItem(
             id=item.get("id", ""),
             text=item.get("text", ""),
@@ -148,6 +154,55 @@ def normalize_x_items(
             date=date_str,
             date_confidence=date_confidence,
             engagement=engagement,
+            engagement_verified=engagement_verified,
+            relevance=item.get("relevance", 0.5),
+            why_relevant=item.get("why_relevant", ""),
+        ))
+
+    return normalized
+
+
+def normalize_hn_items(
+    items: List[Dict[str, Any]],
+    from_date: str,
+    to_date: str,
+) -> List[schema.HNItem]:
+    """Normalize raw HackerNews items to schema.
+
+    Args:
+        items: Raw HN items from Algolia API
+        from_date: Start of date range
+        to_date: End of date range
+
+    Returns:
+        List of HNItem objects
+    """
+    normalized = []
+
+    for item in items:
+        # Parse engagement
+        engagement = None
+        eng_raw = item.get("engagement")
+        if isinstance(eng_raw, dict):
+            engagement = schema.Engagement(
+                points=eng_raw.get("points"),
+                num_comments=eng_raw.get("num_comments"),
+            )
+
+        # Determine date confidence - HN dates from API are always reliable
+        date_str = item.get("date")
+        date_confidence = dates.get_date_confidence(date_str, from_date, to_date)
+
+        normalized.append(schema.HNItem(
+            id=item.get("id", ""),
+            title=item.get("title", ""),
+            url=item.get("url", ""),
+            hn_url=item.get("hn_url", ""),
+            author=item.get("author", ""),
+            date=date_str,
+            date_confidence=date_confidence,
+            engagement=engagement,
+            engagement_verified=True,  # HN data always comes from API
             relevance=item.get("relevance", 0.5),
             why_relevant=item.get("why_relevant", ""),
         ))

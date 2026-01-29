@@ -93,6 +93,20 @@ def render_compact(report: schema.Report, limit: int = 15, missing_keys: str = "
         lines.append("*💡 Tip: Add OPENAI_API_KEY for Reddit data and better triangulation.*")
         lines.append("")
 
+    # Data quality metrics
+    if report.data_quality:
+        dq = report.data_quality
+        lines.append("### Data Quality")
+        lines.append(f"- **Total Items:** {dq.total_items}")
+        lines.append(f"- **Verified Dates:** {dq.verified_dates_count} ({dq.verified_dates_percent:.0f}%)")
+        lines.append(f"- **Verified Engagement:** {dq.verified_engagement_count} ({dq.verified_engagement_percent:.0f}%)")
+        lines.append(f"- **Avg Recency:** {dq.avg_recency_days:.1f} days")
+        if dq.sources_available:
+            lines.append(f"- **Sources Used:** {', '.join(dq.sources_available)}")
+        if dq.sources_failed:
+            lines.append(f"- **Sources Failed:** {', '.join(dq.sources_failed)}")
+        lines.append("")
+
     # Reddit items
     if report.reddit_error:
         lines.append("### Reddit Threads")
@@ -167,6 +181,37 @@ def render_compact(report: schema.Report, limit: int = 15, missing_keys: str = "
             lines.append(f"**{item.id}** (score:{item.score}) @{item.author_handle}{date_str}{conf_str}{eng_str}")
             lines.append(f"  {item.text[:200]}...")
             lines.append(f"  {item.url}")
+            lines.append(f"  *{item.why_relevant}*")
+            lines.append("")
+
+    # HackerNews items
+    if report.hn_error:
+        lines.append("### HackerNews")
+        lines.append("")
+        lines.append(f"**ERROR:** {report.hn_error}")
+        lines.append("")
+    elif report.hn:
+        lines.append("### HackerNews")
+        lines.append("")
+        for item in report.hn[:limit]:
+            eng_str = ""
+            if item.engagement:
+                eng = item.engagement
+                parts = []
+                if eng.points is not None:
+                    parts.append(f"{eng.points}pts")
+                if eng.num_comments is not None:
+                    parts.append(f"{eng.num_comments}cmt")
+                if parts:
+                    eng_str = f" [{', '.join(parts)}]"
+
+            date_str = f" ({item.date})" if item.date else " (date unknown)"
+            conf_str = f" [date:{item.date_confidence}]" if item.date_confidence != "high" else ""
+
+            lines.append(f"**{item.id}** (score:{item.score}) @{item.author}{date_str}{conf_str}{eng_str}")
+            lines.append(f"  {item.title}")
+            lines.append(f"  {item.url}")
+            lines.append(f"  Discussion: {item.hn_url}")
             lines.append(f"  *{item.why_relevant}*")
             lines.append("")
 

@@ -2,7 +2,7 @@
   "id": "resp_xai_mock456",
   "object": "response",
   "created": 1738800000,
-  "model": "grok-4-1-fast",
+  "model": "grok-4-1-fast-reasoning",
   "output": [
     {
       "type": "message",

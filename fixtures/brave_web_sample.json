@@ -14,6 +14,28 @@
         "netloc": "example.com",
         "hostname": "example.com",
         "path": "/test-topic-guide"
+      },
+      "schemas": [["Article"]],
+      "article": {
+        "author": [{"name": "Jane Smith"}],
+        "date": "2026-01-20",
+        "publisher": {"name": "Example Publications"},
+        "isAccessibleForFree": true
+      },
+      "rating": {
+        "ratingValue": 4.5,
+        "best_rating": 5,
+        "review_count": 128
+      },
+      "deep_results": {
+        "buttons": [
+          {"title": "Getting Started", "url": "https://example.com/test-topic-guide/start"},
+          {"title": "Advanced Tips", "url": "https://example.com/test-topic-guide/advanced"},
+          {"title": "FAQ", "url": "https://example.com/test-topic-guide/faq"}
+        ],
+        "news": [
+          {"title": "New test topic updates for 2026", "url": "https://news.example.com/test-topic-2026", "age": "3 days ago"}
+        ]
       }
     },
     {
@@ -26,7 +48,17 @@
         "netloc": "blog.example.org",
         "hostname": "blog.example.org",
         "path": "/best-practices"
-      }
+      },
+      "review": {
+        "name": "Test Topic Pro Review",
+        "description": "An in-depth review of the leading test topic tools.",
+        "rating": {
+          "ratingValue": 4.2,
+          "best_rating": 5,
+          "review_count": 45
+        }
+      },
+      "subtype": "article"
     },
     {
       "title": "Deep Dive into Test Topic",
@@ -74,7 +106,14 @@
         "title": "Test Topic",
         "description": "A demonstration topic for testing purposes.",
         "long_desc": "Test topic is widely used in software development for testing and demonstration purposes.",
-        "url": "https://en.wikipedia.org/wiki/Test_topic"
+        "url": "https://en.wikipedia.org/wiki/Test_topic",
+        "attributes": [
+          {"label": "Type", "value": "Concept"},
+          {"label": "Domain", "value": "Software Testing"}
+        ],
+        "profiles": [
+          {"name": "GitHub", "long_name": "GitHub - Test Topic", "url": "https://github.com/test-topic"}
+        ]
       }
     ]
   },

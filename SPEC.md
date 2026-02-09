@@ -19,7 +19,7 @@ The orchestrator (`last30days.py`) coordinates discovery, enrichment, normalizat
 - **dates.py**: Date range calculation, recency scoring, and date confidence
 - **cache.py**: 24-hour TTL caching keyed by topic + date range + source mode
 - **http.py**: stdlib-only HTTP client with retry logic
-- **models.py**: xAI model auto-selection (prefers grok-4-1-fast for agentic search) with daily caching
+- **models.py**: xAI model auto-selection (prefers grok-4-1-fast-reasoning) with daily caching
 - **schema.py**: Dataclass schemas for all 7 item types + Report + DataQuality
 
 ### Source Modules (Brave Search API)
@@ -44,7 +44,7 @@ The orchestrator (`last30days.py`) coordinates discovery, enrichment, normalizat
 
 ## Source Strategy
 
-### Brave Search API (Pro Data AI Plan)
+### Brave Search API (Pro AI Plan)
 - **Web Search**: `GET /res/v1/web/search` with `freshness`, `extra_snippets`, `summary`, `result_filter`, `spellcheck`, `search_lang`, `country`, `goggles`
 - **News Search**: `GET /res/v1/news/search` with `freshness`, `count` up to 50, `spellcheck`, `search_lang`, `country`
 - **Video Search**: `GET /res/v1/videos/search` with `freshness`, `spellcheck`, `search_lang`, `country`
@@ -52,6 +52,8 @@ The orchestrator (`last30days.py`) coordinates discovery, enrichment, normalizat
 - **Reddit**: Web search with `site:reddit.com` operator + custom goggles
 - **Discussions**: Extracted from web search `result_filter=discussions`
 - **FAQ/Infobox**: Extracted from web search `result_filter=faq,infobox`
+- **Schema-Enriched Results**: Extracts `rating`, `review`, `article`, `product`, `book`, `recipe`, `creative_work`, `movie`, `music_recording`, `qa` from web results
+- **Deep Results**: Extracts nested `buttons` (sitelinks), `news`, `social`, `videos` from web result `deep_results` field
 - **Spellcheck**: Enabled on all endpoints for better results with typos
 - **Localization**: Optional `BRAVE_SEARCH_LANG` and `BRAVE_COUNTRY` config
 
@@ -61,7 +63,7 @@ The orchestrator (`last30days.py`) coordinates discovery, enrichment, normalizat
 - Native image understanding: `enable_image_understanding=true` for analyzing images in posts
 - Returns posts with rich engagement: likes, reposts, replies, quotes, views, bookmarks
 - Media detection: `has_media` flag for posts containing images/video
-- Preferred model: `grok-4-1-fast` (specifically trained for agentic tool calling)
+- Preferred model: `grok-4-1-fast-reasoning` (chain-of-thought reasoning + agentic tool calling)
 - Handle filtering available: `allowed_x_handles` and `excluded_x_handles`
 - Sole source for X/Twitter data (no alternative)
 
@@ -85,7 +87,7 @@ The orchestrator (`last30days.py`) coordinates discovery, enrichment, normalizat
 
 ### Web (relevance-focused, no engagement)
 - **55%** relevance + **45%** recency - **10pt** source penalty
-- +5 for schema data, +3 for extra_snippets
+- +5 for schema data, +3 for rich schema (rating/review/product), +3 for deep results, +3 for extra_snippets
 
 ### Videos (balanced, no engagement)
 - **50%** relevance + **50%** recency
@@ -187,7 +189,7 @@ XAI_API_KEY=your-xai-api-key
 
 # Optional: xAI model selection
 XAI_MODEL_POLICY=latest        # latest (auto) or stable
-XAI_MODEL_PIN=grok-4-1-fast    # Pin to specific model
+XAI_MODEL_PIN=grok-4-1-fast-reasoning    # Pin to specific model
 
 # Optional: Brave localization
 BRAVE_SEARCH_LANG=en           # Language for search results

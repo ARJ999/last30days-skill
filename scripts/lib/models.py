@@ -20,8 +20,10 @@ def _log(msg: str):
 XAI_MODELS_URL = "https://api.x.ai/v1/models"
 
 # Preferred models in order (latest first)
-# grok-4-1-fast is specifically trained for agentic tool calling (x_search, web_search)
+# grok-4-1-fast-reasoning: best quality for agentic search with chain-of-thought
+# grok-4-1-fast: fast agentic tool calling (x_search, web_search)
 XAI_PREFERRED_MODELS = [
+    "grok-4-1-fast-reasoning",
     "grok-4-1-fast",
     "grok-4-1",
     "grok-4",
@@ -31,11 +33,11 @@ XAI_PREFERRED_MODELS = [
 
 XAI_ALIASES = {
     "latest": None,   # Auto-select latest
-    "stable": "grok-4-1-fast",
+    "stable": "grok-4-1-fast-reasoning",
 }
 
 # Fallback model if API listing fails
-XAI_FALLBACK_MODEL = "grok-4-1-fast"
+XAI_FALLBACK_MODEL = "grok-4-1-fast-reasoning"
 
 
 def is_grok_search_capable(model_id: str) -> bool:
@@ -45,7 +47,7 @@ def is_grok_search_capable(model_id: str) -> bool:
     """
     if not model_id.startswith("grok"):
         return False
-    exclude_patterns = ["embed", "vision", "finetuned", "reasoning"]
+    exclude_patterns = ["embed", "vision", "finetuned"]
     return not any(p in model_id.lower() for p in exclude_patterns)
 
 

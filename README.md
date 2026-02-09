@@ -68,21 +68,21 @@ Zero external Python dependencies. Uses only Python stdlib (`urllib`, `json`, `h
 
 ### Sources & APIs
 
-**Brave Search API** (Pro Data AI plan) powers 6 of 7 sources:
+**Brave Search API** (Pro AI plan) powers 6 of 7 sources:
 - **Reddit** — Web search with `site:reddit.com` + custom goggles, enriched with real thread engagement (upvotes, comments, upvote ratio)
 - **News** — Dedicated `/news/search` endpoint with up to 50 results per page
-- **Web** — General web search with extra snippets, schema data, FAQ, and infobox extraction
+- **Web** — General web search with extra snippets, schema-enriched data (ratings, reviews, products, articles), deep results (sitelinks, nested news/videos), FAQ, and infobox extraction
 - **Videos** — Dedicated `/videos/search` endpoint
 - **Discussions** — Forum threads from Stack Overflow, Discourse, etc. via `result_filter=discussions`
 - **AI Summary** — Free two-step summarizer (not billed separately) with inline citations
 
-Brave features used: `freshness` date filtering, `extra_snippets` (up to 5 per result), `summary` key for AI summarizer, `result_filter`, `goggles` re-ranking, `spellcheck` on all endpoints, `search_lang`/`country` localization.
+Brave Pro AI features used: `freshness` date filtering, `extra_snippets` (up to 5 per result), `summary` key for AI summarizer, `result_filter`, `goggles` re-ranking, `spellcheck` on all endpoints, `search_lang`/`country` localization, schema.org structured data extraction (rating, review, article, product, book, recipe, creative_work, movie, music, Q&A), deep results (sitelinks, nested news/social/videos).
 
 **xAI API** (Responses API) powers X/Twitter search:
 - Uses `x_search` agent tool with native `from_date`/`to_date` date filtering (ISO 8601)
 - Returns full engagement metrics: likes, reposts, replies, quotes, views, bookmarks
 - Media detection: `has_media` flag, `enable_image_understanding` for analyzing images in posts
-- Preferred model: `grok-4-1-fast` (specifically trained for agentic tool calling)
+- Preferred model: `grok-4-1-fast-reasoning` (chain-of-thought reasoning + agentic tool calling)
 
 **HackerNews Algolia API** — free, no authentication:
 - Returns stories with verified points and comment counts
@@ -96,7 +96,7 @@ env.py → models.py → parallel search (6 threads) → reddit_enrich.py
 ```
 
 1. **Environment** — Load API keys from `~/.config/last30days/.env` (env vars override)
-2. **Models** — Auto-select best xAI model (prefers `grok-4-1-fast`, daily cache)
+2. **Models** — Auto-select best xAI model (prefers `grok-4-1-fast-reasoning`, daily cache)
 3. **Search** — Run up to 7 source searches in parallel via `concurrent.futures`
 4. **Enrich** — Fetch real Reddit thread JSON for engagement metrics
 5. **Normalize** — Convert raw API responses to canonical schema (7 normalizers)
@@ -112,7 +112,7 @@ env.py → models.py → parallel search (6 threads) → reddit_enrich.py
 | X | 40% | 25% | 35% | 30% reposts + 25% likes + 20% views + 10% replies + 10% quotes + 5% bookmarks |
 | HN | 40% | 25% | 35% | 60% points + 40% comments |
 | News | 45% | 55% | — | Time-sensitive, no engagement |
-| Web | 55% | 45% | — | -10pt source penalty, +5 schema, +3 extra_snippets |
+| Web | 55% | 45% | — | -10pt source penalty, +5 schema, +3 rich schema, +3 deep results, +3 extra_snippets |
 | Videos | 50% | 50% | — | Balanced |
 | Discussions | 45% | 25% | 30% | Engagement proxy from snippet count |
 
@@ -179,7 +179,7 @@ XAI_API_KEY=your-xai-api-key
 
 # Optional: xAI model selection
 XAI_MODEL_POLICY=latest        # latest (auto) or stable
-XAI_MODEL_PIN=grok-4-1-fast    # Pin to specific model
+XAI_MODEL_PIN=grok-4-1-fast-reasoning    # Pin to specific model
 
 # Optional: Brave localization
 BRAVE_SEARCH_LANG=en           # Language for search results

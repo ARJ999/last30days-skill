@@ -17,27 +17,45 @@ class TestIsGrokSearchCapable(unittest.TestCase):
     def test_grok_fast_is_capable(self):
         self.assertTrue(models.is_grok_search_capable("grok-4-1-fast"))
 
+    def test_grok_fast_reasoning_is_capable(self):
+        self.assertTrue(models.is_grok_search_capable("grok-4-1-fast-reasoning"))
+
+    def test_grok_reasoning_is_capable(self):
+        self.assertTrue(models.is_grok_search_capable("grok-3-reasoning"))
+
     def test_grok_embed_is_not_capable(self):
         self.assertFalse(models.is_grok_search_capable("grok-embed-v1"))
 
     def test_grok_vision_is_not_capable(self):
         self.assertFalse(models.is_grok_search_capable("grok-vision-v1"))
 
-    def test_grok_reasoning_is_not_capable(self):
-        self.assertFalse(models.is_grok_search_capable("grok-3-reasoning"))
-
     def test_non_grok_is_not_capable(self):
         self.assertFalse(models.is_grok_search_capable("llama-3"))
 
 
 class TestSelectXAIModel(unittest.TestCase):
-    def test_latest_policy(self):
+    def test_latest_policy_prefers_fast_reasoning(self):
+        from lib import cache
+        cache.MODEL_CACHE_FILE.unlink(missing_ok=True)
+        mock_models = [
+            {"id": "grok-4-1-fast-reasoning", "created": 1706227200},
+            {"id": "grok-4-1-fast", "created": 1704067200},
+            {"id": "grok-4-1", "created": 1704067200},
+            {"id": "grok-3", "created": 1701388800},
+        ]
+        result = models.select_xai_model(
+            "fake-key",
+            policy="latest",
+            mock_models=mock_models,
+        )
+        self.assertEqual(result, "grok-4-1-fast-reasoning")
+
+    def test_latest_falls_back_to_fast(self):
         from lib import cache
         cache.MODEL_CACHE_FILE.unlink(missing_ok=True)
         mock_models = [
             {"id": "grok-4-1-fast", "created": 1704067200},
             {"id": "grok-4-1", "created": 1704067200},
-            {"id": "grok-3", "created": 1701388800},
         ]
         result = models.select_xai_model(
             "fake-key",
@@ -53,7 +71,7 @@ class TestSelectXAIModel(unittest.TestCase):
             "fake-key",
             policy="stable",
         )
-        self.assertEqual(result, "grok-4-1-fast")
+        self.assertEqual(result, "grok-4-1-fast-reasoning")
 
     def test_pinned_policy(self):
         result = models.select_xai_model(
@@ -71,7 +89,7 @@ class TestSelectXAIModel(unittest.TestCase):
             policy="latest",
             mock_models=[],
         )
-        self.assertEqual(result, "grok-4-1-fast")
+        self.assertEqual(result, "grok-4-1-fast-reasoning")
 
 
 class TestGetModels(unittest.TestCase):
@@ -85,11 +103,12 @@ class TestGetModels(unittest.TestCase):
         cache.MODEL_CACHE_FILE.unlink(missing_ok=True)
         config = {"XAI_API_KEY": "xai-test"}
         mock_xai = [
+            {"id": "grok-4-1-fast-reasoning", "created": 1706227200},
             {"id": "grok-4-1-fast", "created": 1704067200},
             {"id": "grok-4-1", "created": 1704067200},
         ]
         result = models.get_models(config, mock_xai_models=mock_xai)
-        self.assertEqual(result["xai"], "grok-4-1-fast")
+        self.assertEqual(result["xai"], "grok-4-1-fast-reasoning")
 
 
 if __name__ == "__main__":

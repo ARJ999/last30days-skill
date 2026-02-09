@@ -171,6 +171,8 @@ def normalize_web_items(
             extra_snippets=item.get("extra_snippets", []),
             date=date_str, date_confidence=date_confidence,
             has_schema_data=item.get("has_schema_data", False),
+            schema_data=item.get("schema_data"),
+            deep_results=item.get("deep_results"),
             relevance=item.get("relevance", 0.5),
             why_relevant=item.get("why_relevant", ""),
         ))

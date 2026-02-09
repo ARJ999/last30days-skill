@@ -237,13 +237,15 @@ class WebItem:
     date: Optional[str] = None
     date_confidence: str = "high"
     has_schema_data: bool = False
+    schema_data: Optional[Dict[str, Any]] = None
+    deep_results: Optional[Dict[str, Any]] = None
     relevance: float = 0.5
     why_relevant: str = ""
     subs: SubScores = field(default_factory=SubScores)
     score: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        d = {
             'id': self.id,
             'title': self.title,
             'url': self.url,
@@ -258,6 +260,11 @@ class WebItem:
             'subs': self.subs.to_dict(),
             'score': self.score,
         }
+        if self.schema_data:
+            d['schema_data'] = self.schema_data
+        if self.deep_results:
+            d['deep_results'] = self.deep_results
+        return d
 
 
 @dataclass
@@ -574,6 +581,8 @@ class Report:
                 extra_snippets=w.get('extra_snippets', []),
                 date=w.get('date'), date_confidence=w.get('date_confidence', 'high'),
                 has_schema_data=w.get('has_schema_data', False),
+                schema_data=w.get('schema_data'),
+                deep_results=w.get('deep_results'),
                 relevance=w.get('relevance', 0.5),
                 why_relevant=w.get('why_relevant', ''),
                 subs=_build_subs(w.get('subs')),

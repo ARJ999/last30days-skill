@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-last30days - Research a topic from the last 30 days on Reddit, X, and HackerNews.
+last30days - Research a topic from the last 30 days across 7 sources.
+
+Sources: Reddit (Brave), X (xAI), HackerNews (Algolia), News (Brave),
+         Web (Brave), Videos (Brave), Discussions (Brave)
 
 Usage:
     python3 last30days.py <topic> [options]
@@ -8,12 +11,11 @@ Usage:
 Options:
     --mock              Use fixtures instead of real API calls
     --emit=MODE         Output mode: compact|json|md|context|path (default: compact)
-    --sources=MODE      Source selection: auto|reddit|x|both (default: auto)
-    --quick             Faster research with fewer sources (8-12 each)
-    --deep              Comprehensive research with more sources (50-70 Reddit, 40-60 X, 40-60 HN)
+    --sources=MODE      Source selection: auto|all|reddit|x|news|web (default: auto)
+    --quick             Faster research with fewer sources
+    --deep              Comprehensive research with more sources
+    --refresh           Force fresh data (ignore cache)
     --debug             Enable verbose debug logging
-
-Note: HackerNews is automatically searched alongside other sources (no API key required).
 """
 
 import argparse
@@ -29,6 +31,13 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from lib import (
+    brave_client,
+    brave_news,
+    brave_reddit,
+    brave_summarizer,
+    brave_video,
+    brave_web,
+    cache,
     dates,
     dedupe,
     env,
@@ -36,13 +45,11 @@ from lib import (
     http,
     models,
     normalize,
-    openai_reddit,
     reddit_enrich,
     render,
     schema,
     score,
     ui,
-    websearch,
     xai_x,
 )
 
@@ -56,67 +63,84 @@ def load_fixture(name: str) -> dict:
     return {}
 
 
-def _search_reddit(
+def _search_brave_web(
+    client: brave_client.BraveClient,
     topic: str,
-    config: dict,
-    selected_models: dict,
     from_date: str,
     to_date: str,
     depth: str,
     mock: bool,
 ) -> tuple:
-    """Search Reddit via OpenAI (runs in thread).
-
-    Returns:
-        Tuple of (reddit_items, raw_openai, error)
-    """
-    raw_openai = None
-    reddit_error = None
-
+    """Search Brave Web for general results + discussions + FAQ + infobox + summarizer key."""
     if mock:
-        raw_openai = load_fixture("openai_sample.json")
-    else:
-        try:
-            raw_openai = openai_reddit.search_reddit(
-                config["OPENAI_API_KEY"],
-                selected_models["openai"],
-                topic,
-                from_date,
-                to_date,
-                depth=depth,
-            )
-        except http.HTTPError as e:
-            raw_openai = {"error": str(e)}
-            reddit_error = f"API error: {e}"
-        except Exception as e:
-            raw_openai = {"error": str(e)}
-            reddit_error = f"{type(e).__name__}: {e}"
+        return load_fixture("brave_web_sample.json"), None
+    try:
+        raw = brave_web.search_web(client, topic, from_date, to_date, depth=depth)
+        return raw, None
+    except brave_client.BraveError as e:
+        return None, f"Brave Web error: {e}"
+    except Exception as e:
+        return None, f"{type(e).__name__}: {e}"
 
-    # Parse response
-    reddit_items = openai_reddit.parse_reddit_response(raw_openai or {})
 
-    # Quick retry with simpler query if few results
-    if len(reddit_items) < 5 and not mock and not reddit_error:
-        core = openai_reddit._extract_core_subject(topic)
-        if core.lower() != topic.lower():
-            try:
-                retry_raw = openai_reddit.search_reddit(
-                    config["OPENAI_API_KEY"],
-                    selected_models["openai"],
-                    core,
-                    from_date, to_date,
-                    depth=depth,
-                )
-                retry_items = openai_reddit.parse_reddit_response(retry_raw)
-                # Add items not already found (by URL)
-                existing_urls = {item.get("url") for item in reddit_items}
-                for item in retry_items:
-                    if item.get("url") not in existing_urls:
-                        reddit_items.append(item)
-            except Exception:
-                pass
+def _search_brave_reddit(
+    client: brave_client.BraveClient,
+    topic: str,
+    from_date: str,
+    to_date: str,
+    depth: str,
+    mock: bool,
+) -> tuple:
+    """Search Brave for Reddit threads."""
+    if mock:
+        return load_fixture("brave_reddit_sample.json"), None
+    try:
+        raw = brave_reddit.search_reddit(client, topic, from_date, to_date, depth=depth)
+        return raw, None
+    except brave_client.BraveError as e:
+        return None, f"Brave Reddit error: {e}"
+    except Exception as e:
+        return None, f"{type(e).__name__}: {e}"
 
-    return reddit_items, raw_openai, reddit_error
+
+def _search_brave_news(
+    client: brave_client.BraveClient,
+    topic: str,
+    from_date: str,
+    to_date: str,
+    depth: str,
+    mock: bool,
+) -> tuple:
+    """Search Brave News."""
+    if mock:
+        return load_fixture("brave_news_sample.json"), None
+    try:
+        raw = brave_news.search_news(client, topic, from_date, to_date, depth=depth)
+        return raw, None
+    except brave_client.BraveError as e:
+        return None, f"Brave News error: {e}"
+    except Exception as e:
+        return None, f"{type(e).__name__}: {e}"
+
+
+def _search_brave_video(
+    client: brave_client.BraveClient,
+    topic: str,
+    from_date: str,
+    to_date: str,
+    depth: str,
+    mock: bool,
+) -> tuple:
+    """Search Brave Videos."""
+    if mock:
+        return load_fixture("brave_video_sample.json"), None
+    try:
+        raw = brave_video.search_videos(client, topic, from_date, to_date, depth=depth)
+        return raw, None
+    except brave_client.BraveError as e:
+        return None, f"Brave Video error: {e}"
+    except Exception as e:
+        return None, f"{type(e).__name__}: {e}"
 
 
 def _search_x(
@@ -128,37 +152,23 @@ def _search_x(
     depth: str,
     mock: bool,
 ) -> tuple:
-    """Search X via xAI (runs in thread).
-
-    Returns:
-        Tuple of (x_items, raw_xai, error)
-    """
-    raw_xai = None
-    x_error = None
-
+    """Search X via xAI."""
     if mock:
-        raw_xai = load_fixture("xai_sample.json")
-    else:
-        try:
-            raw_xai = xai_x.search_x(
-                config["XAI_API_KEY"],
-                selected_models["xai"],
-                topic,
-                from_date,
-                to_date,
-                depth=depth,
-            )
-        except http.HTTPError as e:
-            raw_xai = {"error": str(e)}
-            x_error = f"API error: {e}"
-        except Exception as e:
-            raw_xai = {"error": str(e)}
-            x_error = f"{type(e).__name__}: {e}"
-
-    # Parse response
-    x_items = xai_x.parse_x_response(raw_xai or {})
-
-    return x_items, raw_xai, x_error
+        return load_fixture("xai_sample.json"), None
+    try:
+        raw = xai_x.search_x(
+            config["XAI_API_KEY"],
+            selected_models["xai"],
+            topic,
+            from_date,
+            to_date,
+            depth=depth,
+        )
+        return raw, None
+    except http.HTTPError as e:
+        return None, f"xAI API error: {e}"
+    except Exception as e:
+        return None, f"{type(e).__name__}: {e}"
 
 
 def _search_hn(
@@ -168,43 +178,21 @@ def _search_hn(
     depth: str,
     mock: bool,
 ) -> tuple:
-    """Search HackerNews via Algolia API (runs in thread).
-
-    HackerNews is free (no API key required) and provides valuable
-    developer community insights.
-
-    Returns:
-        Tuple of (hn_items, raw_hn, error)
-    """
-    raw_hn = None
-    hn_error = None
-
+    """Search HackerNews via Algolia."""
     if mock:
-        raw_hn = load_fixture("hn_sample.json")
-    else:
-        try:
-            raw_hn = hn.search_hn(
-                topic,
-                from_date,
-                to_date,
-                depth=depth,
-            )
-        except http.HTTPError as e:
-            raw_hn = {"error": str(e)}
-            hn_error = f"API error: {e}"
-        except Exception as e:
-            raw_hn = {"error": str(e)}
-            hn_error = f"{type(e).__name__}: {e}"
-
-    # Parse response
-    hn_items = hn.parse_hn_response(raw_hn or {})
-
-    return hn_items, raw_hn, hn_error
+        return load_fixture("hn_sample.json"), None
+    try:
+        raw = hn.search_hn(topic, from_date, to_date, depth=depth)
+        return raw, None
+    except http.HTTPError as e:
+        return None, f"HN API error: {e}"
+    except Exception as e:
+        return None, f"{type(e).__name__}: {e}"
 
 
 def run_research(
     topic: str,
-    sources: str,
+    resolved_sources: str,
     config: dict,
     selected_models: dict,
     from_date: str,
@@ -212,115 +200,145 @@ def run_research(
     depth: str = "default",
     mock: bool = False,
     progress: ui.ProgressDisplay = None,
-) -> tuple:
-    """Run the research pipeline.
+) -> dict:
+    """Run the full research pipeline.
 
-    Returns:
-        Tuple of (reddit_items, x_items, hn_items, web_needed, raw_openai, raw_xai, raw_hn, raw_reddit_enriched, reddit_error, x_error, hn_error)
-
-    Note: web_needed is True when WebSearch should be performed by Claude.
-    The script outputs a marker and Claude handles WebSearch in its session.
+    Returns dict with all raw responses, parsed items, and errors.
     """
-    reddit_items = []
-    x_items = []
-    hn_items = []
-    raw_openai = None
-    raw_xai = None
-    raw_hn = None
-    raw_reddit_enriched = []
-    reddit_error = None
-    x_error = None
-    hn_error = None
+    has_brave = bool(config.get("BRAVE_API_KEY")) or mock
+    has_xai = bool(config.get("XAI_API_KEY")) or mock
 
-    # Check if WebSearch is needed (always needed in web-only mode)
-    web_needed = sources in ("all", "web", "reddit-web", "x-web")
+    brave = None
+    if has_brave and not mock:
+        brave = brave_client.BraveClient(config["BRAVE_API_KEY"])
 
-    # Web-only mode: no API calls needed, Claude handles everything
-    if sources == "web":
-        if progress:
-            progress.start_web_only()
-            progress.end_web_only()
-        return reddit_items, x_items, hn_items, True, raw_openai, raw_xai, raw_hn, raw_reddit_enriched, reddit_error, x_error, hn_error
+    # Determine which searches to run based on resolved sources
+    run_brave_web = has_brave and resolved_sources in ("full", "brave", "web")
+    run_brave_reddit = has_brave and resolved_sources in ("full", "brave", "reddit")
+    run_brave_news = has_brave and resolved_sources in ("full", "brave", "news")
+    run_brave_video = has_brave and resolved_sources in ("full", "brave")
+    run_x = has_xai and resolved_sources in ("full", "x")
+    run_hn = True  # HN is always free
 
-    # Determine which searches to run
-    run_reddit = sources in ("both", "reddit", "all", "reddit-web")
-    run_x = sources in ("both", "x", "all", "x-web")
-    # HN is free (no API key), run it whenever we're doing any research
-    run_hn = sources not in ("web",)
+    # Raw responses
+    raw = {
+        "brave_web": None, "brave_reddit": None, "brave_news": None,
+        "brave_video": None, "xai": None, "hn": None,
+    }
+    errors = {
+        "reddit": None, "x": None, "hn": None,
+        "news": None, "web": None, "video": None,
+    }
 
-    # Run Reddit, X, and HN searches in parallel
-    reddit_future = None
-    x_future = None
-    hn_future = None
+    # Phase 1: Parallel search (up to 6 threads)
+    futures = {}
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        if run_brave_web:
+            if progress:
+                progress.start_web()
+            futures["brave_web"] = executor.submit(
+                _search_brave_web, brave, topic, from_date, to_date, depth, mock
+            )
 
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        # Submit all searches
-        if run_reddit:
+        if run_brave_reddit:
             if progress:
                 progress.start_reddit()
-            reddit_future = executor.submit(
-                _search_reddit, topic, config, selected_models,
-                from_date, to_date, depth, mock
+            futures["brave_reddit"] = executor.submit(
+                _search_brave_reddit, brave, topic, from_date, to_date, depth, mock
+            )
+
+        if run_brave_news:
+            if progress:
+                progress.start_news()
+            futures["brave_news"] = executor.submit(
+                _search_brave_news, brave, topic, from_date, to_date, depth, mock
+            )
+
+        if run_brave_video:
+            if progress:
+                progress.start_videos()
+            futures["brave_video"] = executor.submit(
+                _search_brave_video, brave, topic, from_date, to_date, depth, mock
             )
 
         if run_x:
             if progress:
                 progress.start_x()
-            x_future = executor.submit(
-                _search_x, topic, config, selected_models,
-                from_date, to_date, depth, mock
+            futures["xai"] = executor.submit(
+                _search_x, topic, config, selected_models, from_date, to_date, depth, mock
             )
 
         if run_hn:
             if progress:
                 progress.start_hn()
-            hn_future = executor.submit(
+            futures["hn"] = executor.submit(
                 _search_hn, topic, from_date, to_date, depth, mock
             )
 
         # Collect results
-        if reddit_future:
+        for key, future in futures.items():
             try:
-                reddit_items, raw_openai, reddit_error = reddit_future.result()
-                if reddit_error and progress:
-                    progress.show_error(f"Reddit error: {reddit_error}")
+                result, error = future.result()
+                raw[key] = result
+                if error:
+                    # Map raw key to error key
+                    err_key = {
+                        "brave_web": "web", "brave_reddit": "reddit",
+                        "brave_news": "news", "brave_video": "video",
+                        "xai": "x", "hn": "hn",
+                    }.get(key, key)
+                    errors[err_key] = error
+                    if progress:
+                        progress.show_error(error)
             except Exception as e:
-                reddit_error = f"{type(e).__name__}: {e}"
+                err_key = {
+                    "brave_web": "web", "brave_reddit": "reddit",
+                    "brave_news": "news", "brave_video": "video",
+                    "xai": "x", "hn": "hn",
+                }.get(key, key)
+                errors[err_key] = f"{type(e).__name__}: {e}"
                 if progress:
-                    progress.show_error(f"Reddit error: {e}")
-            if progress:
-                progress.end_reddit(len(reddit_items))
+                    progress.show_error(f"{key} error: {e}")
 
-        if x_future:
-            try:
-                x_items, raw_xai, x_error = x_future.result()
-                if x_error and progress:
-                    progress.show_error(f"X error: {x_error}")
-            except Exception as e:
-                x_error = f"{type(e).__name__}: {e}"
-                if progress:
-                    progress.show_error(f"X error: {e}")
-            if progress:
-                progress.end_x(len(x_items))
+    # Show search completion for each source
+    web_items_raw = brave_web.parse_web_results(raw["brave_web"] or {}) if raw["brave_web"] else []
+    discussion_items_raw = brave_web.parse_discussions(raw["brave_web"] or {}) if raw["brave_web"] else []
+    if progress and run_brave_web:
+        progress.end_web(len(web_items_raw), len(discussion_items_raw))
 
-        if hn_future:
-            try:
-                hn_items, raw_hn, hn_error = hn_future.result()
-                if hn_error and progress:
-                    progress.show_error(f"HN error: {hn_error}")
-            except Exception as e:
-                hn_error = f"{type(e).__name__}: {e}"
-                if progress:
-                    progress.show_error(f"HN error: {e}")
-            if progress:
-                progress.end_hn(len(hn_items))
+    reddit_items_raw = brave_reddit.parse_reddit_results(raw["brave_reddit"] or {}) if raw["brave_reddit"] else []
+    if progress and run_brave_reddit:
+        progress.end_reddit(len(reddit_items_raw))
 
-    # Enrich Reddit items with real data (parallel for performance)
-    if reddit_items:
+    news_items_raw = brave_news.parse_news_results(raw["brave_news"] or {}) if raw["brave_news"] else []
+    if progress and run_brave_news:
+        progress.end_news(len(news_items_raw))
+
+    video_items_raw = brave_video.parse_video_results(raw["brave_video"] or {}) if raw["brave_video"] else []
+    if progress and run_brave_video:
+        progress.end_videos(len(video_items_raw))
+
+    x_items_raw = xai_x.parse_x_response(raw["xai"] or {}) if raw["xai"] else []
+    if progress and run_x:
+        progress.end_x(len(x_items_raw))
+
+    hn_items_raw = hn.parse_hn_response(raw["hn"] or {}) if raw["hn"] else []
+    if progress and run_hn:
+        progress.end_hn(len(hn_items_raw))
+
+    # Extract Brave enrichment data (FAQ, infobox, summarizer key)
+    faq_items = brave_web.parse_faq(raw["brave_web"] or {}) if raw["brave_web"] else []
+    infobox_data = brave_web.parse_infobox(raw["brave_web"] or {}) if raw["brave_web"] else None
+    summarizer_key = brave_web.get_summarizer_key(raw["brave_web"] or {}) if raw["brave_web"] else None
+
+    # Phase 2: Enrichment (Reddit threads + Summarizer)
+    raw_reddit_enriched = []
+
+    # Enrich Reddit items with real engagement data
+    if reddit_items_raw:
         if progress:
-            progress.start_reddit_enrich(1, len(reddit_items))
+            progress.start_reddit_enrich(1, len(reddit_items_raw))
 
-        # Use thread pool for parallel enrichment (5 workers for optimal throughput)
         def enrich_item(args):
             i, item = args
             try:
@@ -333,32 +351,129 @@ def run_research(
                 return i, item, str(e)
 
         with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = {executor.submit(enrich_item, (i, item)): i
-                      for i, item in enumerate(reddit_items)}
+            enrich_futures = {
+                executor.submit(enrich_item, (i, item)): i
+                for i, item in enumerate(reddit_items_raw)
+            }
 
             completed = 0
-            for future in as_completed(futures):
+            for future in as_completed(enrich_futures):
                 i, enriched_item, error = future.result()
-                reddit_items[i] = enriched_item
+                reddit_items_raw[i] = enriched_item
                 completed += 1
-
                 if progress:
-                    progress.update_reddit_enrich(completed, len(reddit_items))
+                    progress.update_reddit_enrich(completed, len(reddit_items_raw))
 
-                if error and progress:
-                    progress.show_error(f"Enrich failed for {enriched_item.get('url', 'unknown')}: {error}")
-
-        raw_reddit_enriched = list(reddit_items)
-
+        raw_reddit_enriched = list(reddit_items_raw)
         if progress:
             progress.end_reddit_enrich()
 
-    return reddit_items, x_items, hn_items, web_needed, raw_openai, raw_xai, raw_hn, raw_reddit_enriched, reddit_error, x_error, hn_error
+    # Fetch AI summary (free - not billed separately)
+    summary_data = None
+    if summarizer_key and brave and not mock:
+        if progress:
+            progress.start_summarizer()
+        summary_response = brave_summarizer.fetch_summary(brave, summarizer_key)
+        summary_data = brave_summarizer.parse_summary_response(summary_response)
+        if progress:
+            progress.end_summarizer(summary_data and summary_data.get("summary") is not None)
+
+    return {
+        "raw": raw,
+        "errors": errors,
+        "reddit_items": reddit_items_raw,
+        "x_items": x_items_raw,
+        "hn_items": hn_items_raw,
+        "news_items": news_items_raw,
+        "web_items": web_items_raw,
+        "video_items": video_items_raw,
+        "discussion_items": discussion_items_raw,
+        "faq_items": faq_items,
+        "infobox": infobox_data,
+        "summary_data": summary_data,
+        "raw_reddit_enriched": raw_reddit_enriched,
+    }
+
+
+def process_results(
+    research: dict,
+    from_date: str,
+    to_date: str,
+    progress: ui.ProgressDisplay = None,
+) -> dict:
+    """Process raw results: normalize, score, dedupe."""
+    if progress:
+        progress.start_processing()
+
+    # Normalize all sources
+    norm_reddit = normalize.normalize_reddit_items(research["reddit_items"], from_date, to_date)
+    norm_x = normalize.normalize_x_items(research["x_items"], from_date, to_date)
+    norm_hn = normalize.normalize_hn_items(research["hn_items"], from_date, to_date)
+    norm_news = normalize.normalize_news_items(research["news_items"], from_date, to_date)
+    norm_web = normalize.normalize_web_items(research["web_items"], from_date, to_date)
+    norm_videos = normalize.normalize_video_items(research["video_items"], from_date, to_date)
+    norm_discussions = normalize.normalize_discussion_items(research["discussion_items"], from_date, to_date)
+
+    # Hard date filter (safety net)
+    filt_reddit = normalize.filter_by_date_range(norm_reddit, from_date, to_date)
+    filt_x = normalize.filter_by_date_range(norm_x, from_date, to_date)
+    filt_hn = normalize.filter_by_date_range(norm_hn, from_date, to_date)
+    filt_news = normalize.filter_by_date_range(norm_news, from_date, to_date)
+    filt_web = normalize.filter_by_date_range(norm_web, from_date, to_date)
+    filt_videos = normalize.filter_by_date_range(norm_videos, from_date, to_date)
+    filt_discussions = normalize.filter_by_date_range(norm_discussions, from_date, to_date)
+
+    # Score all sources
+    scored_reddit = score.score_reddit_items(filt_reddit)
+    scored_x = score.score_x_items(filt_x)
+    scored_hn = score.score_hn_items(filt_hn)
+    scored_news = score.score_news_items(filt_news)
+    scored_web = score.score_web_items(filt_web)
+    scored_videos = score.score_video_items(filt_videos)
+    scored_discussions = score.score_discussion_items(filt_discussions)
+
+    # Sort by score
+    sorted_reddit = score.sort_items(scored_reddit)
+    sorted_x = score.sort_items(scored_x)
+    sorted_hn = score.sort_items(scored_hn)
+    sorted_news = score.sort_items(scored_news)
+    sorted_web = score.sort_items(scored_web)
+    sorted_videos = score.sort_items(scored_videos)
+    sorted_discussions = score.sort_items(scored_discussions)
+
+    # Per-source dedup (text similarity)
+    deduped_reddit = dedupe.dedupe_reddit(sorted_reddit)
+    deduped_x = dedupe.dedupe_x(sorted_x)
+    deduped_hn = dedupe.dedupe_hn(sorted_hn)
+    deduped_news = dedupe.dedupe_news(sorted_news)
+    deduped_web = dedupe.dedupe_web(sorted_web)
+    deduped_videos = dedupe.dedupe_videos(sorted_videos)
+    deduped_discussions = dedupe.dedupe_discussions(sorted_discussions)
+
+    # Cross-source URL dedup
+    final_reddit, final_x, final_hn, final_news, final_web, final_videos, final_discussions = \
+        dedupe.cross_source_url_dedupe(
+            deduped_reddit, deduped_x, deduped_hn,
+            deduped_news, deduped_web, deduped_videos, deduped_discussions,
+        )
+
+    if progress:
+        progress.end_processing()
+
+    return {
+        "reddit": final_reddit,
+        "x": final_x,
+        "hn": final_hn,
+        "news": final_news,
+        "web": final_web,
+        "videos": final_videos,
+        "discussions": final_discussions,
+    }
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Research a topic from the last 30 days on Reddit + X"
+        description="Research a topic from the last 30 days across 7 sources"
     )
     parser.add_argument("topic", nargs="?", help="Topic to research")
     parser.add_argument("--mock", action="store_true", help="Use fixtures")
@@ -370,37 +485,20 @@ def main():
     )
     parser.add_argument(
         "--sources",
-        choices=["auto", "reddit", "x", "both"],
+        choices=["auto", "all", "reddit", "x", "news", "web"],
         default="auto",
         help="Source selection",
     )
-    parser.add_argument(
-        "--quick",
-        action="store_true",
-        help="Faster research with fewer sources (8-12 each)",
-    )
-    parser.add_argument(
-        "--deep",
-        action="store_true",
-        help="Comprehensive research with more sources (50-70 Reddit, 40-60 X)",
-    )
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable verbose debug logging",
-    )
-    parser.add_argument(
-        "--include-web",
-        action="store_true",
-        help="Include general web search alongside Reddit/X (lower weighted)",
-    )
+    parser.add_argument("--quick", action="store_true", help="Faster research")
+    parser.add_argument("--deep", action="store_true", help="Comprehensive research")
+    parser.add_argument("--refresh", action="store_true", help="Force fresh data (ignore cache)")
+    parser.add_argument("--debug", action="store_true", help="Enable verbose debug logging")
 
     args = parser.parse_args()
 
-    # Enable debug logging if requested
+    # Enable debug logging
     if args.debug:
         os.environ["LAST30DAYS_DEBUG"] = "1"
-        # Re-import http to pick up debug flag
         from lib import http as http_module
         http_module.DEBUG = True
 
@@ -423,160 +521,153 @@ def main():
     # Load config
     config = env.get_config()
 
-    # Check available sources
+    # Check for legacy OpenAI config
+    legacy_msg = env.check_legacy_config(config)
+    if legacy_msg:
+        print(legacy_msg, file=sys.stderr)
+
+    # Determine available sources
     available = env.get_available_sources(config)
 
-    # Mock mode can work without keys
+    # Mock mode works without keys
     if args.mock:
-        if args.sources == "auto":
-            sources = "both"
-        else:
-            sources = args.sources
+        resolved_sources = "full"
     else:
-        # Validate requested sources against available
-        sources, error = env.validate_sources(args.sources, available, args.include_web)
-        if error:
-            # If it's a warning about WebSearch fallback, print but continue
-            if "WebSearch fallback" in error:
-                print(f"Note: {error}", file=sys.stderr)
-            else:
-                print(f"Error: {error}", file=sys.stderr)
-                sys.exit(1)
+        resolved_sources, warning = env.validate_sources(args.sources, available)
+        if warning:
+            print(f"Note: {warning}", file=sys.stderr)
 
     # Get date range
     from_date, to_date = dates.get_date_range(30)
 
-    # Check what keys are missing for promo messaging
+    # Check cache (unless --refresh)
+    cache_key = cache.get_cache_key(args.topic, from_date, to_date, resolved_sources)
+    if not args.refresh and not args.mock:
+        cached_data, cache_age = cache.load_cache_with_age(cache_key)
+        if cached_data:
+            try:
+                report = schema.Report.from_dict(cached_data)
+                report.from_cache = True
+                report.cache_age_hours = cache_age
+
+                progress = ui.ProgressDisplay(args.topic, show_banner=True)
+                progress.show_cached(cache_age)
+
+                output_result(report, args.emit, env.get_missing_keys(config))
+                return
+            except Exception:
+                pass  # Cache corrupt, continue with fresh search
+
+    # Check missing keys for promo
     missing_keys = env.get_missing_keys(config)
 
     # Initialize progress display
     progress = ui.ProgressDisplay(args.topic, show_banner=True)
 
-    # Show promo for missing keys BEFORE research
-    if missing_keys != 'none':
+    # Show promo for missing keys
+    if missing_keys != "none":
         progress.show_promo(missing_keys)
 
-    # Select models
+    # Select models (xAI only now)
     if args.mock:
-        # Use mock models
-        mock_openai_models = load_fixture("models_openai_sample.json").get("data", [])
         mock_xai_models = load_fixture("models_xai_sample.json").get("data", [])
         selected_models = models.get_models(
-            {
-                "OPENAI_API_KEY": "mock",
-                "XAI_API_KEY": "mock",
-                **config,
-            },
-            mock_openai_models,
+            {"XAI_API_KEY": "mock", **config},
             mock_xai_models,
         )
     else:
         selected_models = models.get_models(config)
 
     # Determine mode string
-    if sources == "all":
-        mode = "all"  # reddit + x + web
-    elif sources == "both":
-        mode = "both"  # reddit + x
-    elif sources == "reddit":
-        mode = "reddit-only"
-    elif sources == "reddit-web":
-        mode = "reddit-web"
-    elif sources == "x":
-        mode = "x-only"
-    elif sources == "x-web":
-        mode = "x-web"
-    elif sources == "web":
-        mode = "web-only"
-    else:
-        mode = sources
+    mode_map = {
+        "full": "full",
+        "brave": "brave",
+        "reddit": "reddit-only",
+        "x": "x-only",
+        "news": "news-only",
+        "web": "web-only",
+        "hn": "hn-only",
+    }
+    mode = mode_map.get(resolved_sources, resolved_sources)
 
-    # Run research
-    reddit_items, x_items, hn_items, web_needed, raw_openai, raw_xai, raw_hn, raw_reddit_enriched, reddit_error, x_error, hn_error = run_research(
-        args.topic,
-        sources,
-        config,
-        selected_models,
-        from_date,
-        to_date,
-        depth,
-        args.mock,
-        progress,
+    # Run research pipeline
+    research = run_research(
+        args.topic, resolved_sources, config, selected_models,
+        from_date, to_date, depth, args.mock, progress,
     )
 
-    # Processing phase
-    progress.start_processing()
+    # Process results
+    processed = process_results(research, from_date, to_date, progress)
 
-    # Normalize items
-    normalized_reddit = normalize.normalize_reddit_items(reddit_items, from_date, to_date)
-    normalized_x = normalize.normalize_x_items(x_items, from_date, to_date)
-    normalized_hn = normalize.normalize_hn_items(hn_items, from_date, to_date)
-
-    # Hard date filter: exclude items with verified dates outside the range
-    # This is the safety net - even if prompts let old content through, this filters it
-    filtered_reddit = normalize.filter_by_date_range(normalized_reddit, from_date, to_date)
-    filtered_x = normalize.filter_by_date_range(normalized_x, from_date, to_date)
-    filtered_hn = normalize.filter_by_date_range(normalized_hn, from_date, to_date)
-
-    # Score items
-    scored_reddit = score.score_reddit_items(filtered_reddit)
-    scored_x = score.score_x_items(filtered_x)
-    scored_hn = score.score_hn_items(filtered_hn)
-
-    # Sort items
-    sorted_reddit = score.sort_items(scored_reddit)
-    sorted_x = score.sort_items(scored_x)
-    sorted_hn = score.sort_items(scored_hn)
-
-    # Dedupe items
-    deduped_reddit = dedupe.dedupe_reddit(sorted_reddit)
-    deduped_x = dedupe.dedupe_x(sorted_x)
-    deduped_hn = dedupe.dedupe_hn(sorted_hn)
-
-    progress.end_processing()
-
-    # Create report
+    # Build report
     report = schema.create_report(
-        args.topic,
-        from_date,
-        to_date,
-        mode,
-        selected_models.get("openai"),
-        selected_models.get("xai"),
+        args.topic, from_date, to_date, mode,
+        xai_model=selected_models.get("xai"),
     )
-    report.reddit = deduped_reddit
-    report.x = deduped_x
-    report.hn = deduped_hn
-    report.reddit_error = reddit_error
-    report.x_error = x_error
-    report.hn_error = hn_error
+    report.reddit = processed["reddit"]
+    report.x = processed["x"]
+    report.hn = processed["hn"]
+    report.news = processed["news"]
+    report.web = processed["web"]
+    report.videos = processed["videos"]
+    report.discussions = processed["discussions"]
 
-    # Compute data quality metrics
+    # Attach errors
+    report.reddit_error = research["errors"]["reddit"]
+    report.x_error = research["errors"]["x"]
+    report.hn_error = research["errors"]["hn"]
+    report.news_error = research["errors"]["news"]
+    report.web_error = research["errors"]["web"]
+    report.video_error = research["errors"]["video"]
+
+    # Attach Brave enrichment data
+    if research["summary_data"]:
+        report.summary = research["summary_data"].get("summary")
+        report.summary_citations = research["summary_data"].get("citations", [])
+        report.summary_followups = research["summary_data"].get("followups", [])
+    report.infobox = research["infobox"]
+    report.faqs = research["faq_items"]
+
+    # Compute data quality
     report.data_quality = schema.compute_data_quality(report)
 
     # Generate context snippet
     report.context_snippet_md = render.render_context_snippet(report)
 
     # Write outputs
-    render.write_outputs(report, raw_openai, raw_xai, raw_hn, raw_reddit_enriched)
+    render.write_outputs(
+        report,
+        raw_brave_web=research["raw"].get("brave_web"),
+        raw_brave_reddit=research["raw"].get("brave_reddit"),
+        raw_brave_news=research["raw"].get("brave_news"),
+        raw_brave_video=research["raw"].get("brave_video"),
+        raw_xai=research["raw"].get("xai"),
+        raw_hn=research["raw"].get("hn"),
+        raw_reddit_enriched=research["raw_reddit_enriched"],
+    )
+
+    # Save to cache
+    if not args.mock:
+        cache.save_cache(cache_key, report.to_dict())
 
     # Show completion
-    if sources == "web":
-        progress.show_web_only_complete()
-    else:
-        progress.show_complete(len(deduped_reddit), len(deduped_x), len(deduped_hn))
+    progress.show_complete(
+        reddit_count=len(processed["reddit"]),
+        x_count=len(processed["x"]),
+        hn_count=len(processed["hn"]),
+        news_count=len(processed["news"]),
+        web_count=len(processed["web"]),
+        video_count=len(processed["videos"]),
+        discussion_count=len(processed["discussions"]),
+    )
 
     # Output result
-    output_result(report, args.emit, web_needed, args.topic, from_date, to_date, missing_keys)
+    output_result(report, args.emit, missing_keys)
 
 
 def output_result(
     report: schema.Report,
     emit_mode: str,
-    web_needed: bool = False,
-    topic: str = "",
-    from_date: str = "",
-    to_date: str = "",
     missing_keys: str = "none",
 ):
     """Output the result based on emit mode."""
@@ -590,23 +681,6 @@ def output_result(
         print(report.context_snippet_md)
     elif emit_mode == "path":
         print(render.get_context_path())
-
-    # Output WebSearch instructions if needed
-    if web_needed:
-        print("\n" + "="*60)
-        print("### WEBSEARCH REQUIRED ###")
-        print("="*60)
-        print(f"Topic: {topic}")
-        print(f"Date range: {from_date} to {to_date}")
-        print("")
-        print("Claude: Use your WebSearch tool to find 8-15 relevant web pages.")
-        print("EXCLUDE: reddit.com, x.com, twitter.com (already covered above)")
-        print("INCLUDE: blogs, docs, news, tutorials from the last 30 days")
-        print("")
-        print("After searching, synthesize WebSearch results WITH the Reddit/X")
-        print("results above. WebSearch items should rank LOWER than comparable")
-        print("Reddit/X items (they lack engagement metrics).")
-        print("="*60)
 
 
 if __name__ == "__main__":

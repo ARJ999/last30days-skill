@@ -1,149 +1,178 @@
-"""Environment and API key management for last30days skill."""
+"""Environment and configuration management for last30days skill."""
 
 import os
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Dict, Optional, Tuple
 
 CONFIG_DIR = Path.home() / ".config" / "last30days"
-CONFIG_FILE = CONFIG_DIR / ".env"
+ENV_FILE = CONFIG_DIR / ".env"
 
 
-def load_env_file(path: Path) -> Dict[str, str]:
-    """Load environment variables from a file."""
-    env = {}
+def load_env_file(path: Path = ENV_FILE) -> Dict[str, str]:
+    """Load key=value pairs from .env file.
+
+    Args:
+        path: Path to .env file
+
+    Returns:
+        Dict of key-value pairs
+    """
+    result = {}
     if not path.exists():
-        return env
+        return result
 
-    with open(path, 'r') as f:
+    with open(path) as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith('#'):
                 continue
-            if '=' in line:
-                key, _, value = line.partition('=')
-                key = key.strip()
-                value = value.strip()
-                # Remove quotes if present
-                if value and value[0] in ('"', "'") and value[-1] == value[0]:
-                    value = value[1:-1]
-                if key and value:
-                    env[key] = value
-    return env
+            if '=' not in line:
+                continue
+            key, _, value = line.partition('=')
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and value:
+                result[key] = value
+
+    return result
 
 
-def get_config() -> Dict[str, Any]:
-    """Load configuration from ~/.config/last30days/.env and environment."""
-    # Load from config file first
-    file_env = load_env_file(CONFIG_FILE)
+def get_config() -> Dict[str, str]:
+    """Load configuration from env file and environment.
 
-    # Environment variables override file
-    config = {
-        'OPENAI_API_KEY': os.environ.get('OPENAI_API_KEY') or file_env.get('OPENAI_API_KEY'),
-        'XAI_API_KEY': os.environ.get('XAI_API_KEY') or file_env.get('XAI_API_KEY'),
-        'OPENAI_MODEL_POLICY': os.environ.get('OPENAI_MODEL_POLICY') or file_env.get('OPENAI_MODEL_POLICY', 'auto'),
-        'OPENAI_MODEL_PIN': os.environ.get('OPENAI_MODEL_PIN') or file_env.get('OPENAI_MODEL_PIN'),
-        'XAI_MODEL_POLICY': os.environ.get('XAI_MODEL_POLICY') or file_env.get('XAI_MODEL_POLICY', 'latest'),
-        'XAI_MODEL_PIN': os.environ.get('XAI_MODEL_PIN') or file_env.get('XAI_MODEL_PIN'),
-    }
+    Priority: environment variables > .env file
+
+    Returns:
+        Config dict with all known keys
+    """
+    config = load_env_file()
+
+    # Environment variables override .env
+    env_keys = [
+        "BRAVE_API_KEY",
+        "XAI_API_KEY",
+        "XAI_MODEL_POLICY",
+        "XAI_MODEL_PIN",
+        # Legacy keys (for migration detection)
+        "OPENAI_API_KEY",
+    ]
+
+    for key in env_keys:
+        val = os.environ.get(key)
+        if val:
+            config[key] = val
 
     return config
 
 
-def config_exists() -> bool:
-    """Check if configuration file exists."""
-    return CONFIG_FILE.exists()
-
-
-def get_available_sources(config: Dict[str, Any]) -> str:
-    """Determine which sources are available based on API keys.
-
-    Returns: 'both', 'reddit', 'x', or 'web' (fallback when no keys)
-    """
-    has_openai = bool(config.get('OPENAI_API_KEY'))
-    has_xai = bool(config.get('XAI_API_KEY'))
-
-    if has_openai and has_xai:
-        return 'both'
-    elif has_openai:
-        return 'reddit'
-    elif has_xai:
-        return 'x'
-    else:
-        return 'web'  # Fallback: WebSearch only (no API keys needed)
-
-
-def get_missing_keys(config: Dict[str, Any]) -> str:
-    """Determine which API keys are missing.
-
-    Returns: 'both', 'reddit', 'x', or 'none'
-    """
-    has_openai = bool(config.get('OPENAI_API_KEY'))
-    has_xai = bool(config.get('XAI_API_KEY'))
-
-    if has_openai and has_xai:
-        return 'none'
-    elif has_openai:
-        return 'x'  # Missing xAI key
-    elif has_xai:
-        return 'reddit'  # Missing OpenAI key
-    else:
-        return 'both'  # Missing both keys
-
-
-def validate_sources(requested: str, available: str, include_web: bool = False) -> tuple[str, Optional[str]]:
-    """Validate requested sources against available keys.
+def get_available_sources(config: Dict[str, str]) -> str:
+    """Determine available sources based on API keys.
 
     Args:
-        requested: 'auto', 'reddit', 'x', 'both', or 'web'
-        available: Result from get_available_sources()
-        include_web: If True, add WebSearch to available sources
+        config: Configuration dict
 
     Returns:
-        Tuple of (effective_sources, error_message)
+        Source availability: 'full', 'brave', 'x', or 'hn'
     """
-    # WebSearch-only mode (no API keys)
-    if available == 'web':
-        if requested == 'auto':
-            return 'web', None
-        elif requested == 'web':
-            return 'web', None
+    has_brave = bool(config.get("BRAVE_API_KEY"))
+    has_xai = bool(config.get("XAI_API_KEY"))
+
+    if has_brave and has_xai:
+        return "full"      # All sources: Reddit + X + HN + News + Web + Videos
+    elif has_brave:
+        return "brave"     # Reddit + HN + News + Web + Videos (no X)
+    elif has_xai:
+        return "x"         # X + HN only
+    else:
+        return "hn"        # HN only (free, always available)
+
+
+def validate_sources(
+    requested: str,
+    available: str,
+) -> Tuple[str, Optional[str]]:
+    """Validate requested sources against available API keys.
+
+    Args:
+        requested: Requested source mode (auto, reddit, x, news, web, all)
+        available: Available sources from get_available_sources()
+
+    Returns:
+        Tuple of (resolved_sources, error_message_or_None)
+    """
+    if requested == "auto":
+        if available == "full":
+            return "full", None
+        elif available == "brave":
+            return "brave", None
+        elif available == "x":
+            return "x", None
         else:
-            return 'web', f"No API keys configured. Using WebSearch fallback. Add keys to ~/.config/last30days/.env for Reddit/X."
+            return "hn", None
 
-    if requested == 'auto':
-        # Add web to sources if include_web is set
-        if include_web:
-            if available == 'both':
-                return 'all', None  # reddit + x + web
-            elif available == 'reddit':
-                return 'reddit-web', None
-            elif available == 'x':
-                return 'x-web', None
-        return available, None
+    if requested == "all":
+        if available == "full":
+            return "full", None
+        elif available == "brave":
+            return "brave", "XAI_API_KEY not set. Running without X/Twitter."
+        elif available == "x":
+            return "x", "BRAVE_API_KEY not set. Running X + HN only."
+        else:
+            return "hn", "No API keys set. Running HN only."
 
-    if requested == 'web':
-        return 'web', None
+    if requested == "reddit":
+        if available in ("full", "brave"):
+            return "reddit", None
+        return "hn", "BRAVE_API_KEY required for Reddit search."
 
-    if requested == 'both':
-        if available not in ('both',):
-            missing = 'xAI' if available == 'reddit' else 'OpenAI'
-            return 'none', f"Requested both sources but {missing} key is missing. Use --sources=auto to use available keys."
-        if include_web:
-            return 'all', None
-        return 'both', None
+    if requested == "x":
+        if available in ("full", "x"):
+            return "x", None
+        return "hn", "XAI_API_KEY required for X/Twitter search."
 
-    if requested == 'reddit':
-        if available == 'x':
-            return 'none', "Requested Reddit but only xAI key is available."
-        if include_web:
-            return 'reddit-web', None
-        return 'reddit', None
+    if requested == "news":
+        if available in ("full", "brave"):
+            return "news", None
+        return "hn", "BRAVE_API_KEY required for News search."
 
-    if requested == 'x':
-        if available == 'reddit':
-            return 'none', "Requested X but only OpenAI key is available."
-        if include_web:
-            return 'x-web', None
-        return 'x', None
+    if requested == "web":
+        if available in ("full", "brave"):
+            return "web", None
+        return "hn", "BRAVE_API_KEY required for Web search."
 
-    return requested, None
+    return "hn", f"Unknown source mode: {requested}"
+
+
+def get_missing_keys(config: Dict[str, str]) -> str:
+    """Determine which API keys are missing for promo messaging.
+
+    Returns:
+        'both', 'brave', 'x', or 'none'
+    """
+    has_brave = bool(config.get("BRAVE_API_KEY"))
+    has_xai = bool(config.get("XAI_API_KEY"))
+
+    if not has_brave and not has_xai:
+        return "both"
+    elif not has_brave:
+        return "brave"
+    elif not has_xai:
+        return "x"
+    else:
+        return "none"
+
+
+def check_legacy_config(config: Dict[str, str]) -> Optional[str]:
+    """Check for legacy OpenAI config and return migration message.
+
+    Returns:
+        Migration message or None
+    """
+    if config.get("OPENAI_API_KEY") and not config.get("BRAVE_API_KEY"):
+        return (
+            "[MIGRATION] Your config uses OPENAI_API_KEY which is no longer needed.\n"
+            "Replace it with BRAVE_API_KEY for superior research capabilities.\n"
+            "Get your key at: https://api-dashboard.search.brave.com\n"
+            f"Edit: {ENV_FILE}"
+        )
+    return None

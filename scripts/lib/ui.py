@@ -1,6 +1,5 @@
 """Terminal UI utilities for last30days skill."""
 
-import os
 import sys
 import time
 import threading
@@ -10,7 +9,7 @@ from typing import Optional
 # Check if we're in a real terminal (not captured by Claude Code)
 IS_TTY = sys.stderr.isatty()
 
-# ANSI color codes
+
 class Colors:
     PURPLE = '\033[95m'
     BLUE = '\033[94m'
@@ -18,6 +17,7 @@ class Colors:
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
     RED = '\033[91m'
+    ORANGE = '\033[38;5;208m'
     BOLD = '\033[1m'
     DIM = '\033[2m'
     RESET = '\033[0m'
@@ -35,14 +35,13 @@ BANNER = f"""{Colors.PURPLE}{Colors.BOLD}
 
 MINI_BANNER = f"""{Colors.PURPLE}{Colors.BOLD}/last30days{Colors.RESET} {Colors.DIM}· researching...{Colors.RESET}"""
 
-# Fun status messages for each phase
+# Source-specific status messages
 REDDIT_MESSAGES = [
     "Diving into Reddit threads...",
     "Scanning subreddits for gold...",
     "Reading what Redditors are saying...",
     "Exploring the front page of the internet...",
     "Finding the good discussions...",
-    "Upvoting mentally...",
     "Scrolling through comments...",
 ]
 
@@ -53,7 +52,6 @@ X_MESSAGES = [
     "Scanning tweets and threads...",
     "Discovering trending insights...",
     "Following the conversation...",
-    "Reading between the posts...",
 ]
 
 HN_MESSAGES = [
@@ -63,7 +61,35 @@ HN_MESSAGES = [
     "Finding the deep dives...",
     "Exploring Show HN posts...",
     "Mining developer insights...",
-    "Checking what hackers are saying...",
+]
+
+NEWS_MESSAGES = [
+    "Scanning news headlines...",
+    "Reading the latest articles...",
+    "Finding breaking news...",
+    "Checking news sources...",
+    "Discovering recent coverage...",
+]
+
+WEB_MESSAGES = [
+    "Searching the web...",
+    "Finding relevant pages...",
+    "Crawling blogs and docs...",
+    "Discovering tutorials...",
+    "Exploring web content...",
+]
+
+VIDEO_MESSAGES = [
+    "Searching for videos...",
+    "Finding video content...",
+    "Discovering tutorials and talks...",
+    "Scanning video platforms...",
+]
+
+SUMMARIZER_MESSAGES = [
+    "Generating AI summary...",
+    "Synthesizing key insights...",
+    "Creating topic overview...",
 ]
 
 ENRICHING_MESSAGES = [
@@ -82,24 +108,17 @@ PROCESSING_MESSAGES = [
     "Organizing findings...",
 ]
 
-WEB_ONLY_MESSAGES = [
-    "Searching the web...",
-    "Finding blogs and docs...",
-    "Crawling news sites...",
-    "Discovering tutorials...",
-]
-
-# Promo message for users without API keys
+# Promo messages for missing API keys
 PROMO_MESSAGE = f"""
 {Colors.YELLOW}{Colors.BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Colors.RESET}
-{Colors.YELLOW}⚡ UNLOCK THE FULL POWER OF /last30days{Colors.RESET}
+{Colors.YELLOW}UNLOCK THE FULL POWER OF /last30days{Colors.RESET}
 
-{Colors.DIM}Right now you're using web search only. Add API keys to unlock:{Colors.RESET}
+{Colors.DIM}Right now you're using HN only. Add API keys to unlock:{Colors.RESET}
 
-  {Colors.YELLOW}🟠 Reddit{Colors.RESET} - Real upvotes, comments, and community insights
-     └─ Add OPENAI_API_KEY (uses OpenAI's web_search for Reddit)
+  {Colors.ORANGE}Brave Search{Colors.RESET} - Reddit, News, Web, Videos, Discussions, AI Summary
+     └─ Add BRAVE_API_KEY (get it at api-dashboard.search.brave.com)
 
-  {Colors.CYAN}🔵 X (Twitter){Colors.RESET} - Real-time posts, likes, reposts from creators
+  {Colors.CYAN}X (Twitter){Colors.RESET} - Real-time posts, likes, reposts from creators
      └─ Add XAI_API_KEY (uses xAI's live X search)
 
 {Colors.DIM}Setup:{Colors.RESET} Edit {Colors.BOLD}~/.config/last30days/.env{Colors.RESET}
@@ -108,38 +127,36 @@ PROMO_MESSAGE = f"""
 
 PROMO_MESSAGE_PLAIN = """
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚡ UNLOCK THE FULL POWER OF /last30days
+UNLOCK THE FULL POWER OF /last30days
 
-Right now you're using web search only. Add API keys to unlock:
+Right now you're using HN only. Add API keys to unlock:
 
-  🟠 Reddit - Real upvotes, comments, and community insights
-     └─ Add OPENAI_API_KEY (uses OpenAI's web_search for Reddit)
+  Brave Search - Reddit, News, Web, Videos, Discussions, AI Summary
+     └─ Add BRAVE_API_KEY (get it at api-dashboard.search.brave.com)
 
-  🔵 X (Twitter) - Real-time posts, likes, reposts from creators
+  X (Twitter) - Real-time posts, likes, reposts from creators
      └─ Add XAI_API_KEY (uses xAI's live X search)
 
 Setup: Edit ~/.config/last30days/.env
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
-# Shorter promo for single missing key
 PROMO_SINGLE_KEY = {
-    "reddit": f"""
-{Colors.DIM}💡 Tip: Add {Colors.YELLOW}OPENAI_API_KEY{Colors.RESET}{Colors.DIM} to ~/.config/last30days/.env for Reddit data with real engagement metrics!{Colors.RESET}
+    "brave": f"""
+{Colors.DIM}Tip: Add {Colors.ORANGE}BRAVE_API_KEY{Colors.RESET}{Colors.DIM} to ~/.config/last30days/.env for Reddit, News, Web, Videos & AI Summary!{Colors.RESET}
 """,
     "x": f"""
-{Colors.DIM}💡 Tip: Add {Colors.CYAN}XAI_API_KEY{Colors.RESET}{Colors.DIM} to ~/.config/last30days/.env for X/Twitter data with real likes & reposts!{Colors.RESET}
+{Colors.DIM}Tip: Add {Colors.CYAN}XAI_API_KEY{Colors.RESET}{Colors.DIM} to ~/.config/last30days/.env for X/Twitter data with real likes & reposts!{Colors.RESET}
 """,
 }
 
 PROMO_SINGLE_KEY_PLAIN = {
-    "reddit": "\n💡 Tip: Add OPENAI_API_KEY to ~/.config/last30days/.env for Reddit data with real engagement metrics!\n",
-    "x": "\n💡 Tip: Add XAI_API_KEY to ~/.config/last30days/.env for X/Twitter data with real likes & reposts!\n",
+    "brave": "\nTip: Add BRAVE_API_KEY to ~/.config/last30days/.env for Reddit, News, Web, Videos & AI Summary!\n",
+    "x": "\nTip: Add XAI_API_KEY to ~/.config/last30days/.env for X/Twitter data with real likes & reposts!\n",
 }
 
 # Spinner frames
 SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-DOTS_FRAMES = ['   ', '.  ', '.. ', '...']
 
 
 class Spinner:
@@ -164,21 +181,18 @@ class Spinner:
     def start(self):
         self.running = True
         if IS_TTY:
-            # Real terminal - animate
             self.thread = threading.Thread(target=self._spin, daemon=True)
             self.thread.start()
         else:
-            # Not a TTY (Claude Code) - just print once
             if not self.shown_static:
-                sys.stderr.write(f"⏳ {self.message}\n")
+                sys.stderr.write(f"  {self.message}\n")
                 sys.stderr.flush()
                 self.shown_static = True
 
     def update(self, message: str):
         self.message = message
         if not IS_TTY and not self.shown_static:
-            # Print update in non-TTY mode
-            sys.stderr.write(f"⏳ {message}\n")
+            sys.stderr.write(f"  {message}\n")
             sys.stderr.flush()
 
     def stop(self, final_message: str = ""):
@@ -186,10 +200,9 @@ class Spinner:
         if self.thread:
             self.thread.join(timeout=0.2)
         if IS_TTY:
-            # Clear the line in real terminal
             sys.stderr.write("\r" + " " * 80 + "\r")
         if final_message:
-            sys.stderr.write(f"✓ {final_message}\n")
+            sys.stderr.write(f"  {final_message}\n")
         sys.stderr.flush()
 
 
@@ -209,11 +222,16 @@ class ProgressDisplay:
             sys.stderr.write(MINI_BANNER + "\n")
             sys.stderr.write(f"{Colors.DIM}Topic: {Colors.RESET}{Colors.BOLD}{self.topic}{Colors.RESET}\n\n")
         else:
-            # Simple text for non-TTY
-            sys.stderr.write(f"/last30days · researching: {self.topic}\n")
+            sys.stderr.write(f"/last30days - researching: {self.topic}\n")
         sys.stderr.flush()
 
+    def _stop_current(self):
+        if self.spinner:
+            self.spinner.stop()
+
+    # Reddit
     def start_reddit(self):
+        self._stop_current()
         msg = random.choice(REDDIT_MESSAGES)
         self.spinner = Spinner(f"{Colors.YELLOW}Reddit{Colors.RESET} {msg}", Colors.YELLOW)
         self.spinner.start()
@@ -223,8 +241,7 @@ class ProgressDisplay:
             self.spinner.stop(f"{Colors.YELLOW}Reddit{Colors.RESET} Found {count} threads")
 
     def start_reddit_enrich(self, current: int, total: int):
-        if self.spinner:
-            self.spinner.stop()
+        self._stop_current()
         msg = random.choice(ENRICHING_MESSAGES)
         self.spinner = Spinner(f"{Colors.YELLOW}Reddit{Colors.RESET} [{current}/{total}] {msg}", Colors.YELLOW)
         self.spinner.start()
@@ -238,7 +255,9 @@ class ProgressDisplay:
         if self.spinner:
             self.spinner.stop(f"{Colors.YELLOW}Reddit{Colors.RESET} Enriched with engagement data")
 
+    # X
     def start_x(self):
+        self._stop_current()
         msg = random.choice(X_MESSAGES)
         self.spinner = Spinner(f"{Colors.CYAN}X{Colors.RESET} {msg}", Colors.CYAN)
         self.spinner.start()
@@ -247,7 +266,9 @@ class ProgressDisplay:
         if self.spinner:
             self.spinner.stop(f"{Colors.CYAN}X{Colors.RESET} Found {count} posts")
 
+    # HN
     def start_hn(self):
+        self._stop_current()
         msg = random.choice(HN_MESSAGES)
         self.spinner = Spinner(f"{Colors.GREEN}HN{Colors.RESET} {msg}", Colors.GREEN)
         self.spinner.start()
@@ -256,7 +277,57 @@ class ProgressDisplay:
         if self.spinner:
             self.spinner.stop(f"{Colors.GREEN}HN{Colors.RESET} Found {count} stories")
 
+    # News
+    def start_news(self):
+        self._stop_current()
+        msg = random.choice(NEWS_MESSAGES)
+        self.spinner = Spinner(f"{Colors.ORANGE}News{Colors.RESET} {msg}", Colors.ORANGE)
+        self.spinner.start()
+
+    def end_news(self, count: int):
+        if self.spinner:
+            self.spinner.stop(f"{Colors.ORANGE}News{Colors.RESET} Found {count} articles")
+
+    # Web
+    def start_web(self):
+        self._stop_current()
+        msg = random.choice(WEB_MESSAGES)
+        self.spinner = Spinner(f"{Colors.BLUE}Web{Colors.RESET} {msg}", Colors.BLUE)
+        self.spinner.start()
+
+    def end_web(self, count: int, discussion_count: int = 0):
+        if self.spinner:
+            extra = f" + {discussion_count} discussions" if discussion_count else ""
+            self.spinner.stop(f"{Colors.BLUE}Web{Colors.RESET} Found {count} results{extra}")
+
+    # Videos
+    def start_videos(self):
+        self._stop_current()
+        msg = random.choice(VIDEO_MESSAGES)
+        self.spinner = Spinner(f"{Colors.PURPLE}Video{Colors.RESET} {msg}", Colors.PURPLE)
+        self.spinner.start()
+
+    def end_videos(self, count: int):
+        if self.spinner:
+            self.spinner.stop(f"{Colors.PURPLE}Video{Colors.RESET} Found {count} videos")
+
+    # Summarizer
+    def start_summarizer(self):
+        self._stop_current()
+        msg = random.choice(SUMMARIZER_MESSAGES)
+        self.spinner = Spinner(f"{Colors.BLUE}Summary{Colors.RESET} {msg}", Colors.BLUE)
+        self.spinner.start()
+
+    def end_summarizer(self, has_summary: bool):
+        if self.spinner:
+            if has_summary:
+                self.spinner.stop(f"{Colors.BLUE}Summary{Colors.RESET} AI summary generated")
+            else:
+                self.spinner.stop(f"{Colors.BLUE}Summary{Colors.RESET} No summary available")
+
+    # Processing
     def start_processing(self):
+        self._stop_current()
         msg = random.choice(PROCESSING_MESSAGES)
         self.spinner = Spinner(f"{Colors.PURPLE}Processing{Colors.RESET} {msg}", Colors.PURPLE)
         self.spinner.start()
@@ -265,16 +336,57 @@ class ProgressDisplay:
         if self.spinner:
             self.spinner.stop()
 
-    def show_complete(self, reddit_count: int, x_count: int, hn_count: int = 0):
+    def show_complete(
+        self,
+        reddit_count: int = 0,
+        x_count: int = 0,
+        hn_count: int = 0,
+        news_count: int = 0,
+        web_count: int = 0,
+        video_count: int = 0,
+        discussion_count: int = 0,
+    ):
         elapsed = time.time() - self.start_time
         if IS_TTY:
-            sys.stderr.write(f"\n{Colors.GREEN}{Colors.BOLD}✓ Research complete{Colors.RESET} ")
+            sys.stderr.write(f"\n{Colors.GREEN}{Colors.BOLD}Research complete{Colors.RESET} ")
             sys.stderr.write(f"{Colors.DIM}({elapsed:.1f}s){Colors.RESET}\n")
-            sys.stderr.write(f"  {Colors.YELLOW}Reddit:{Colors.RESET} {reddit_count} threads  ")
-            sys.stderr.write(f"{Colors.CYAN}X:{Colors.RESET} {x_count} posts  ")
-            sys.stderr.write(f"{Colors.GREEN}HN:{Colors.RESET} {hn_count} stories\n\n")
+
+            parts = []
+            if reddit_count:
+                parts.append(f"{Colors.YELLOW}Reddit:{Colors.RESET} {reddit_count}")
+            if x_count:
+                parts.append(f"{Colors.CYAN}X:{Colors.RESET} {x_count}")
+            if hn_count:
+                parts.append(f"{Colors.GREEN}HN:{Colors.RESET} {hn_count}")
+            if news_count:
+                parts.append(f"{Colors.ORANGE}News:{Colors.RESET} {news_count}")
+            if web_count:
+                parts.append(f"{Colors.BLUE}Web:{Colors.RESET} {web_count}")
+            if video_count:
+                parts.append(f"{Colors.PURPLE}Video:{Colors.RESET} {video_count}")
+            if discussion_count:
+                parts.append(f"Discussions: {discussion_count}")
+
+            if parts:
+                sys.stderr.write("  " + "  ".join(parts) + "\n")
+            sys.stderr.write("\n")
         else:
-            sys.stderr.write(f"✓ Research complete ({elapsed:.1f}s) - Reddit: {reddit_count} threads, X: {x_count} posts, HN: {hn_count} stories\n")
+            parts = []
+            if reddit_count:
+                parts.append(f"Reddit: {reddit_count}")
+            if x_count:
+                parts.append(f"X: {x_count}")
+            if hn_count:
+                parts.append(f"HN: {hn_count}")
+            if news_count:
+                parts.append(f"News: {news_count}")
+            if web_count:
+                parts.append(f"Web: {web_count}")
+            if video_count:
+                parts.append(f"Video: {video_count}")
+            if discussion_count:
+                parts.append(f"Discussions: {discussion_count}")
+            sys.stderr.write(f"Research complete ({elapsed:.1f}s) - {', '.join(parts)}\n")
         sys.stderr.flush()
 
     def show_cached(self, age_hours: float = None):
@@ -282,41 +394,15 @@ class ProgressDisplay:
             age_str = f" ({age_hours:.1f}h old)"
         else:
             age_str = ""
-        sys.stderr.write(f"{Colors.GREEN}⚡{Colors.RESET} {Colors.DIM}Using cached results{age_str} - use --refresh for fresh data{Colors.RESET}\n\n")
+        sys.stderr.write(f"{Colors.DIM}Using cached results{age_str} - use --refresh for fresh data{Colors.RESET}\n\n")
         sys.stderr.flush()
 
     def show_error(self, message: str):
-        sys.stderr.write(f"{Colors.RED}✗ Error:{Colors.RESET} {message}\n")
-        sys.stderr.flush()
-
-    def start_web_only(self):
-        """Show web-only mode indicator."""
-        msg = random.choice(WEB_ONLY_MESSAGES)
-        self.spinner = Spinner(f"{Colors.GREEN}Web{Colors.RESET} {msg}", Colors.GREEN)
-        self.spinner.start()
-
-    def end_web_only(self):
-        """End web-only spinner."""
-        if self.spinner:
-            self.spinner.stop(f"{Colors.GREEN}Web{Colors.RESET} Claude will search the web")
-
-    def show_web_only_complete(self):
-        """Show completion for web-only mode."""
-        elapsed = time.time() - self.start_time
-        if IS_TTY:
-            sys.stderr.write(f"\n{Colors.GREEN}{Colors.BOLD}✓ Ready for web search{Colors.RESET} ")
-            sys.stderr.write(f"{Colors.DIM}({elapsed:.1f}s){Colors.RESET}\n")
-            sys.stderr.write(f"  {Colors.GREEN}Web:{Colors.RESET} Claude will search blogs, docs & news\n\n")
-        else:
-            sys.stderr.write(f"✓ Ready for web search ({elapsed:.1f}s)\n")
+        sys.stderr.write(f"{Colors.RED}Error:{Colors.RESET} {message}\n")
         sys.stderr.flush()
 
     def show_promo(self, missing: str = "both"):
-        """Show promotional message for missing API keys.
-
-        Args:
-            missing: 'both', 'reddit', or 'x' - which keys are missing
-        """
+        """Show promotional message for missing API keys."""
         if missing == "both":
             if IS_TTY:
                 sys.stderr.write(PROMO_MESSAGE)
@@ -335,10 +421,14 @@ def print_phase(phase: str, message: str):
     colors = {
         "reddit": Colors.YELLOW,
         "x": Colors.CYAN,
+        "hn": Colors.GREEN,
+        "news": Colors.ORANGE,
+        "web": Colors.BLUE,
+        "video": Colors.PURPLE,
         "process": Colors.PURPLE,
         "done": Colors.GREEN,
         "error": Colors.RED,
     }
     color = colors.get(phase, Colors.RESET)
-    sys.stderr.write(f"{color}▸{Colors.RESET} {message}\n")
+    sys.stderr.write(f"{color}>{Colors.RESET} {message}\n")
     sys.stderr.flush()

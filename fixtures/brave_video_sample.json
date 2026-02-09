@@ -1,0 +1,46 @@
+{
+  "results": [
+    {
+      "title": "Test Topic Explained in 10 Minutes",
+      "url": "https://www.youtube.com/watch?v=abc123",
+      "description": "A quick overview of test topic for beginners...",
+      "page_age": "2026-01-28T00:00:00",
+      "meta_url": {
+        "scheme": "https",
+        "netloc": "www.youtube.com",
+        "hostname": "www.youtube.com",
+        "path": "/watch",
+        "profile": {
+          "name": "Tech Tutorials"
+        }
+      },
+      "thumbnail": {
+        "src": "https://i.ytimg.com/vi/abc123/hqdefault.jpg"
+      },
+      "video": {
+        "duration": "10:24"
+      }
+    },
+    {
+      "title": "Advanced Test Topic Tutorial",
+      "url": "https://www.youtube.com/watch?v=def456",
+      "description": "An advanced deep dive into test topic with practical examples...",
+      "page_age": "2026-02-03T00:00:00",
+      "meta_url": {
+        "scheme": "https",
+        "netloc": "www.youtube.com",
+        "hostname": "www.youtube.com",
+        "path": "/watch",
+        "profile": {
+          "name": "Dev Channel"
+        }
+      },
+      "thumbnail": {
+        "src": "https://i.ytimg.com/vi/def456/hqdefault.jpg"
+      },
+      "video": {
+        "duration": "25:10"
+      }
+    }
+  ]
+}

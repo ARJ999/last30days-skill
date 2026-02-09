@@ -1,0 +1,37 @@
+{
+  "results": [
+    {
+      "title": "Test Topic Gains Momentum in 2026",
+      "url": "https://techcrunch.com/2026/01/25/test-topic-momentum/",
+      "description": "Test topic has seen rapid adoption across the industry...",
+      "age": "2026-01-25T12:00:00",
+      "meta_url": {
+        "scheme": "https",
+        "netloc": "techcrunch.com",
+        "hostname": "techcrunch.com",
+        "path": "/2026/01/25/test-topic-momentum/",
+        "profile": {
+          "name": "TechCrunch"
+        }
+      },
+      "thumbnail": {
+        "src": "https://techcrunch.com/images/test-topic.jpg"
+      }
+    },
+    {
+      "title": "How Test Topic Is Changing the Landscape",
+      "url": "https://arstechnica.com/2026/02/test-topic-landscape/",
+      "description": "A deep analysis of how test topic is reshaping the industry...",
+      "age": "2026-02-01T08:00:00",
+      "meta_url": {
+        "scheme": "https",
+        "netloc": "arstechnica.com",
+        "hostname": "arstechnica.com",
+        "path": "/2026/02/test-topic-landscape/",
+        "profile": {
+          "name": "Ars Technica"
+        }
+      }
+    }
+  ]
+}

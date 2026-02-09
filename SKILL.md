@@ -1,22 +1,22 @@
 ---
 name: last30days
-description: Research a topic from the last 30 days on Reddit + X + Web, become an expert, and write copy-paste-ready prompts for the user's target tool.
+description: Research a topic from the last 30 days across Reddit + X + News + Web + Videos + Discussions, become an expert, and write copy-paste-ready prompts for the user's target tool.
 argument-hint: "[topic] for [tool]" or "[topic]"
 context: fork
 agent: Explore
 disable-model-invocation: true
-allowed-tools: Bash, Read, Write, AskUserQuestion, WebSearch
+allowed-tools: Bash, Read, Write, AskUserQuestion
 ---
 
 # last30days: Research Any Topic from the Last 30 Days
 
-Research ANY topic across Reddit, X, and the web. Surface what people are actually discussing, recommending, and debating right now.
+Research ANY topic across 7 sources: Reddit, X, HackerNews, News, Web, Videos, and Forum Discussions. Surface what people are actually discussing, recommending, and debating right now.
 
 Use cases:
-- **Prompting**: "photorealistic people in Nano Banana Pro", "Midjourney prompts", "ChatGPT image generation" → learn techniques, get copy-paste prompts
-- **Recommendations**: "best Claude Code skills", "top AI tools" → get a LIST of specific things people mention
-- **News**: "what's happening with OpenAI", "latest AI announcements" → current events and updates
-- **General**: any topic you're curious about → understand what the community is saying
+- **Prompting**: "photorealistic people in Nano Banana Pro", "Midjourney prompts", "ChatGPT image generation" -> learn techniques, get copy-paste prompts
+- **Recommendations**: "best Claude Code skills", "top AI tools" -> get a LIST of specific things people mention
+- **News**: "what's happening with OpenAI", "latest AI announcements" -> current events and updates
+- **General**: any topic you're curious about -> understand what the community is saying
 
 ## CRITICAL: Parse User Intent
 
@@ -25,17 +25,17 @@ Before doing anything, parse the user's input for:
 1. **TOPIC**: What they want to learn about (e.g., "web app mockups", "Claude Code skills", "image generation")
 2. **TARGET TOOL** (if specified): Where they'll use the prompts (e.g., "Nano Banana Pro", "ChatGPT", "Midjourney")
 3. **QUERY TYPE**: What kind of research they want:
-   - **PROMPTING** - "X prompts", "prompting for X", "X best practices" → User wants to learn techniques and get copy-paste prompts
-   - **RECOMMENDATIONS** - "best X", "top X", "what X should I use", "recommended X" → User wants a LIST of specific things
-   - **NEWS** - "what's happening with X", "X news", "latest on X" → User wants current events/updates
-   - **GENERAL** - anything else → User wants broad understanding of the topic
+   - **PROMPTING** - "X prompts", "prompting for X", "X best practices" -> User wants to learn techniques and get copy-paste prompts
+   - **RECOMMENDATIONS** - "best X", "top X", "what X should I use", "recommended X" -> User wants a LIST of specific things
+   - **NEWS** - "what's happening with X", "X news", "latest on X" -> User wants current events/updates
+   - **GENERAL** - anything else -> User wants broad understanding of the topic
 
 Common patterns:
-- `[topic] for [tool]` → "web mockups for Nano Banana Pro" → TOOL IS SPECIFIED
-- `[topic] prompts for [tool]` → "UI design prompts for Midjourney" → TOOL IS SPECIFIED
-- Just `[topic]` → "iOS design mockups" → TOOL NOT SPECIFIED, that's OK
-- "best [topic]" or "top [topic]" → QUERY_TYPE = RECOMMENDATIONS
-- "what are the best [topic]" → QUERY_TYPE = RECOMMENDATIONS
+- `[topic] for [tool]` -> "web mockups for Nano Banana Pro" -> TOOL IS SPECIFIED
+- `[topic] prompts for [tool]` -> "UI design prompts for Midjourney" -> TOOL IS SPECIFIED
+- Just `[topic]` -> "iOS design mockups" -> TOOL NOT SPECIFIED, that's OK
+- "best [topic]" or "top [topic]" -> QUERY_TYPE = RECOMMENDATIONS
+- "what are the best [topic]" -> QUERY_TYPE = RECOMMENDATIONS
 
 **IMPORTANT: Do NOT ask about target tool before research.**
 - If tool is specified in the query, use it
@@ -50,13 +50,14 @@ Common patterns:
 
 ## Setup Check
 
-The skill works in three modes based on available API keys:
+The skill works in four modes based on available API keys:
 
-1. **Full Mode** (both keys): Reddit + X + WebSearch - best results with engagement metrics
-2. **Partial Mode** (one key): Reddit-only or X-only + WebSearch
-3. **Web-Only Mode** (no keys): WebSearch only - still useful, but no engagement metrics
+1. **Full Mode** (BRAVE_API_KEY + XAI_API_KEY): All 7 sources - Reddit, X, HN, News, Web, Videos, Discussions + AI Summary
+2. **Brave Mode** (BRAVE_API_KEY only): 6 sources - Reddit, HN, News, Web, Videos, Discussions (no X)
+3. **X Mode** (XAI_API_KEY only): X + HN only
+4. **HN-Only Mode** (no keys): HackerNews only - still useful, but limited
 
-**API keys are OPTIONAL.** The skill will work without them using WebSearch fallback.
+**API keys are OPTIONAL.** The skill will always work with HN fallback.
 
 ### First-Time Setup (Optional but Recommended)
 
@@ -66,10 +67,10 @@ If the user wants to add API keys for better results:
 mkdir -p ~/.config/last30days
 cat > ~/.config/last30days/.env << 'ENVEOF'
 # last30days API Configuration
-# Both keys are optional - skill works with WebSearch fallback
+# Both keys are optional - skill works with HN-only fallback
 
-# For Reddit research (uses OpenAI's web_search tool)
-OPENAI_API_KEY=
+# For Reddit, News, Web, Videos, Discussions + AI Summary (Brave Search Pro Data AI)
+BRAVE_API_KEY=
 
 # For X/Twitter research (uses xAI's x_search tool)
 XAI_API_KEY=
@@ -80,13 +81,13 @@ echo "Config created at ~/.config/last30days/.env"
 echo "Edit to add your API keys for enhanced research."
 ```
 
-**DO NOT stop if no keys are configured.** Proceed with web-only mode.
+**DO NOT stop if no keys are configured.** Proceed with HN-only mode.
 
 ---
 
 ## Research Execution
 
-**IMPORTANT: The script handles API key detection automatically.** Run it and check the output to determine mode.
+**IMPORTANT: The script handles API key detection and all 7 source searches automatically.** Run it and check the output.
 
 **Step 1: Run the research script**
 ```bash
@@ -95,72 +96,44 @@ python3 ~/.claude/skills/last30days/scripts/last30days.py "$ARGUMENTS" --emit=co
 
 The script will automatically:
 - Detect available API keys
+- Search up to 7 sources in parallel (Reddit via Brave, X via xAI, HN via Algolia, News/Web/Videos/Discussions via Brave)
+- Enrich Reddit threads with real engagement data
+- Fetch AI summary via Brave Summarizer (free, not billed separately)
+- Normalize, score, deduplicate, and rank all results
 - Show a promo banner if keys are missing (this is intentional marketing)
-- Run Reddit/X searches if keys exist
-- Signal if WebSearch is needed
 
-**Step 2: Check the output mode**
+**Step 2: Analyze the output**
 
-The script output will indicate the mode:
-- **"Mode: both"** or **"Mode: reddit-only"** or **"Mode: x-only"**: Script found results, WebSearch is supplementary
-- **"Mode: web-only"**: No API keys, Claude must do ALL research via WebSearch
-
-**Step 3: Do WebSearch**
-
-For **ALL modes**, do WebSearch to supplement (or provide all data in web-only mode).
-
-Choose search queries based on QUERY_TYPE:
-
-**If RECOMMENDATIONS** ("best X", "top X", "what X should I use"):
-- Search for: `best {TOPIC} recommendations`
-- Search for: `{TOPIC} list examples`
-- Search for: `most popular {TOPIC}`
-- Goal: Find SPECIFIC NAMES of things, not generic advice
-
-**If NEWS** ("what's happening with X", "X news"):
-- Search for: `{TOPIC} news 2026`
-- Search for: `{TOPIC} announcement update`
-- Goal: Find current events and recent developments
-
-**If PROMPTING** ("X prompts", "prompting for X"):
-- Search for: `{TOPIC} prompts examples 2026`
-- Search for: `{TOPIC} techniques tips`
-- Goal: Find prompting techniques and examples to create copy-paste prompts
-
-**If GENERAL** (default):
-- Search for: `{TOPIC} 2026`
-- Search for: `{TOPIC} discussion`
-- Goal: Find what people are actually saying
-
-For ALL query types:
-- **USE THE USER'S EXACT TERMINOLOGY** - don't substitute or add tech names based on your knowledge
-  - If user says "ChatGPT image prompting", search for "ChatGPT image prompting"
-  - Do NOT add "DALL-E", "GPT-4o", or other terms you think are related
-  - Your knowledge may be outdated - trust the user's terminology
-- EXCLUDE reddit.com, x.com, twitter.com (covered by script)
-- INCLUDE: blogs, tutorials, docs, news, GitHub repos
-- **DO NOT output "Sources:" list** - this is noise, we'll show stats at the end
-
-**Step 3: Wait for background script to complete**
-Use TaskOutput to get the script results before proceeding to synthesis.
+The script output will indicate the mode and include:
+- **AI Summary** (if available from Brave Summarizer)
+- **Knowledge Panel** (infobox data)
+- **FAQ** (frequently asked questions from Brave)
+- **Reddit Threads** with real engagement (upvotes, comments, insights)
+- **X Posts** with likes, reposts
+- **HackerNews** with points and comments
+- **News Articles** from news sources
+- **Web Results** from blogs, docs, tutorials
+- **Videos** from YouTube and other platforms
+- **Forum Discussions** from Stack Overflow, Discourse, etc.
 
 **Depth options** (passed through from user's command):
-- `--quick` → Faster, fewer sources (8-12 each)
-- (default) → Balanced (20-30 each)
-- `--deep` → Comprehensive (50-70 Reddit, 40-60 X)
+- `--quick` -> Faster, fewer sources
+- (default) -> Balanced
+- `--deep` -> Comprehensive research with more pages
 
 ---
 
 ## Judge Agent: Synthesize All Sources
 
-**After all searches complete, internally synthesize (don't display stats yet):**
+**After the script completes, internally synthesize (don't display stats yet):**
 
 The Judge Agent must:
-1. Weight Reddit/X sources HIGHER (they have engagement signals: upvotes, likes)
-2. Weight WebSearch sources LOWER (no engagement data)
-3. Identify patterns that appear across ALL three sources (strongest signals)
-4. Note any contradictions between sources
-5. Extract the top 3-5 actionable insights
+1. Weight Reddit/X/HN sources HIGHER (they have verified engagement signals: upvotes, likes, points)
+2. Weight News/Web/Video sources based on recency and relevance scores
+3. Use the AI Summary as a starting point if available
+4. Identify patterns that appear across MULTIPLE sources (strongest signals)
+5. Note any contradictions between sources
+6. Extract the top 3-5 actionable insights
 
 **Do NOT display stats here - they come at the end, right before the invitation.**
 
@@ -174,6 +147,7 @@ Read the research output carefully. Pay attention to:
 - **Exact product/tool names** mentioned (e.g., if research mentions "ClawdBot" or "@clawdbot", that's a DIFFERENT product than "Claude Code" - don't conflate them)
 - **Specific quotes and insights** from the sources - use THESE, not generic knowledge
 - **What the sources actually say**, not what you assume the topic is about
+- **AI Summary** - if available, use it as a synthesis starting point but verify against individual sources
 
 **ANTI-PATTERN TO AVOID**: If user asks about "clawdbot skills" and research returns ClawdBot content (self-hosted AI agent), do NOT synthesize this as "Claude Code skills" just because both involve "skills". Read what the research actually says.
 
@@ -184,7 +158,7 @@ Read the research output carefully. Pay attention to:
 When user asks "best X" or "top X", they want a LIST of specific things:
 - Scan research for specific product names, tool names, project names, skill names, etc.
 - Count how many times each is mentioned
-- Note which sources recommend each (Reddit thread, X post, blog)
+- Note which sources recommend each (Reddit thread, X post, news article, blog)
 - List them by popularity/mention count
 
 **BAD synthesis for "best Claude Code skills":**
@@ -215,8 +189,8 @@ Identify from the ACTUAL RESEARCH OUTPUT:
 
 **If RECOMMENDATIONS** - Show specific things mentioned:
 ```
-🏆 Most mentioned:
-1. [Specific name] - mentioned {n}x (r/sub, @handle, blog.com)
+Most mentioned:
+1. [Specific name] - mentioned {n}x (r/sub, @handle, news.com)
 2. [Specific name] - mentioned {n}x (sources)
 3. [Specific name] - mentioned {n}x (sources)
 4. [Specific name] - mentioned {n}x (sources)
@@ -239,26 +213,41 @@ KEY PATTERNS I'll use:
 
 **THEN - Stats (right before invitation):**
 
-For **full/partial mode** (has API keys):
+For **full mode** (both BRAVE + XAI keys):
 ```
 ---
-✅ All agents reported back!
-├─ 🟠 Reddit: {n} threads │ {sum} upvotes │ {sum} comments
-├─ 🔵 X: {n} posts │ {sum} likes │ {sum} reposts
-├─ 🌐 Web: {n} pages │ {domains}
-└─ Top voices: r/{sub1}, r/{sub2} │ @{handle1}, @{handle2} │ {web_author} on {site}
+All agents reported back!
+|- Reddit: {n} threads | {sum} upvotes | {sum} comments
+|- X: {n} posts | {sum} likes | {sum} reposts
+|- HN: {n} stories | {sum} points
+|- News: {n} articles
+|- Web: {n} pages
+|- Videos: {n} videos
+|- Discussions: {n} forums
+|- Top voices: r/{sub1}, r/{sub2} | @{handle1}, @{handle2}
 ```
 
-For **web-only mode** (no API keys):
+For **brave mode** (BRAVE_API_KEY only):
 ```
 ---
-✅ Research complete!
-├─ 🌐 Web: {n} pages │ {domains}
-└─ Top sources: {author1} on {site1}, {author2} on {site2}
+Research complete!
+|- Reddit: {n} threads | {sum} upvotes | {sum} comments
+|- HN: {n} stories | {sum} points
+|- News: {n} articles
+|- Web: {n} pages | Videos: {n} | Discussions: {n}
 
-💡 Want engagement metrics? Add API keys to ~/.config/last30days/.env
-   - OPENAI_API_KEY → Reddit (real upvotes & comments)
-   - XAI_API_KEY → X/Twitter (real likes & reposts)
+Tip: Add XAI_API_KEY to ~/.config/last30days/.env for X/Twitter data
+```
+
+For **HN-only mode** (no API keys):
+```
+---
+Research complete!
+|- HN: {n} stories | {sum} points
+
+Want better results? Add API keys to ~/.config/last30days/.env
+- BRAVE_API_KEY -> Reddit, News, Web, Videos, Discussions
+- XAI_API_KEY -> X/Twitter (real likes & reposts)
 ```
 
 **LAST - Invitation:**
@@ -302,10 +291,10 @@ Based on what they want to create, write a **single, highly-tailored prompt** us
 
 **If research says to use a specific prompt FORMAT, YOU MUST USE THAT FORMAT:**
 
-- Research says "JSON prompts" → Write the prompt AS JSON
-- Research says "structured parameters" → Use structured key: value format
-- Research says "natural language" → Use conversational prose
-- Research says "keyword lists" → Use comma-separated keywords
+- Research says "JSON prompts" -> Write the prompt AS JSON
+- Research says "structured parameters" -> Use structured key: value format
+- Research says "natural language" -> Use conversational prose
+- Research says "keyword lists" -> Use comma-separated keywords
 
 **ANTI-PATTERN**: Research says "use JSON prompts with device specs" but you write plain prose. This defeats the entire purpose of the research.
 
@@ -357,8 +346,8 @@ For the rest of this conversation, remember:
 **CRITICAL: After research is complete, you are now an EXPERT on this topic.**
 
 When the user asks follow-up questions:
-- **DO NOT run new WebSearches** - you already have the research
-- **Answer from what you learned** - cite the Reddit threads, X posts, and web sources
+- **DO NOT run new searches** - you already have the research
+- **Answer from what you learned** - cite the Reddit threads, X posts, news articles, and web sources
 - **If they ask for a prompt** - write one using your expertise
 - **If they ask a question** - answer it from your research findings
 
@@ -370,22 +359,22 @@ Only do new research if the user explicitly asks about a DIFFERENT topic.
 
 After delivering a prompt, end with:
 
-For **full/partial mode**:
+For **full mode**:
 ```
 ---
-📚 Expert in: {TOPIC} for {TARGET_TOOL}
-📊 Based on: {n} Reddit threads ({sum} upvotes) + {n} X posts ({sum} likes) + {n} web pages
+Expert in: {TOPIC} for {TARGET_TOOL}
+Based on: {n} Reddit threads ({sum} upvotes) + {n} X posts ({sum} likes) + {n} HN stories + {n} news + {n} web pages
 
 Want another prompt? Just tell me what you're creating next.
 ```
 
-For **web-only mode**:
+For **HN-only mode**:
 ```
 ---
-📚 Expert in: {TOPIC} for {TARGET_TOOL}
-📊 Based on: {n} web pages from {domains}
+Expert in: {TOPIC} for {TARGET_TOOL}
+Based on: {n} HN stories ({sum} points)
 
 Want another prompt? Just tell me what you're creating next.
 
-💡 Unlock Reddit & X data: Add API keys to ~/.config/last30days/.env
+Unlock more sources: Add API keys to ~/.config/last30days/.env
 ```

@@ -1,0 +1,85 @@
+{
+  "web_results": [
+    {
+      "title": "Understanding Test Topic: A Complete Guide",
+      "url": "https://example.com/test-topic-guide",
+      "description": "A comprehensive guide to test topic covering all aspects...",
+      "page_age": "2026-01-20T00:00:00",
+      "extra_snippets": [
+        "First extra snippet with more details about the topic.",
+        "Second extra snippet providing additional context."
+      ],
+      "meta_url": {
+        "scheme": "https",
+        "netloc": "example.com",
+        "hostname": "example.com",
+        "path": "/test-topic-guide"
+      }
+    },
+    {
+      "title": "Test Topic Best Practices 2026",
+      "url": "https://blog.example.org/best-practices",
+      "description": "Updated best practices for test topic in 2026...",
+      "page_age": "2026-01-25T00:00:00",
+      "meta_url": {
+        "scheme": "https",
+        "netloc": "blog.example.org",
+        "hostname": "blog.example.org",
+        "path": "/best-practices"
+      }
+    },
+    {
+      "title": "Deep Dive into Test Topic",
+      "url": "https://dev.to/author/test-topic-deep-dive",
+      "description": "An in-depth exploration of test topic with code examples...",
+      "page_age": "2026-02-01T00:00:00",
+      "extra_snippets": [
+        "This article covers the internals of test topic."
+      ],
+      "meta_url": {
+        "scheme": "https",
+        "netloc": "dev.to",
+        "hostname": "dev.to",
+        "path": "/author/test-topic-deep-dive"
+      }
+    }
+  ],
+  "discussions": [
+    {
+      "title": "What's your experience with test topic?",
+      "url": "https://forum.example.com/t/test-topic-experience/12345",
+      "description": "Forum discussion about test topic experiences...",
+      "page_age": "2026-01-28T00:00:00",
+      "data": {
+        "forum_name": "Example Forum",
+        "num_answers": 15
+      }
+    }
+  ],
+  "faq": {
+    "type": "fqa",
+    "results": [
+      {
+        "question": "What is test topic?",
+        "answer": "Test topic is a concept used for demonstration and testing purposes.",
+        "title": "FAQ: Test Topic",
+        "url": "https://example.com/faq"
+      }
+    ]
+  },
+  "infobox": {
+    "type": "infobox",
+    "results": [
+      {
+        "title": "Test Topic",
+        "description": "A demonstration topic for testing purposes.",
+        "long_desc": "Test topic is widely used in software development for testing and demonstration purposes.",
+        "url": "https://en.wikipedia.org/wiki/Test_topic"
+      }
+    ]
+  },
+  "summarizer_key": null,
+  "query": {
+    "original": "test topic"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "results": [
+    {
+      "title": "Test topic is amazing, here's why : technology",
+      "url": "https://www.reddit.com/r/technology/comments/abc123/test_topic_is_amazing/",
+      "description": "Discussion about test topic in the technology community...",
+      "page_age": "2026-01-22T00:00:00",
+      "meta_url": {
+        "scheme": "https",
+        "netloc": "www.reddit.com",
+        "hostname": "www.reddit.com",
+        "path": "/r/technology/comments/abc123/test_topic_is_amazing/"
+      }
+    },
+    {
+      "title": "Anyone else using test topic? Experiences? : programming",
+      "url": "https://www.reddit.com/r/programming/comments/def456/anyone_else_using_test_topic/",
+      "description": "Looking for experiences with test topic...",
+      "page_age": "2026-01-30T00:00:00",
+      "meta_url": {
+        "scheme": "https",
+        "netloc": "www.reddit.com",
+        "hostname": "www.reddit.com",
+        "path": "/r/programming/comments/def456/anyone_else_using_test_topic/"
+      }
+    },
+    {
+      "title": "Test Topic vs Alternative: What's better? : webdev",
+      "url": "https://www.reddit.com/r/webdev/comments/ghi789/test_topic_vs_alternative/",
+      "description": "Comparing test topic with alternatives...",
+      "page_age": "2026-02-05T00:00:00",
+      "meta_url": {
+        "scheme": "https",
+        "netloc": "www.reddit.com",
+        "hostname": "www.reddit.com",
+        "path": "/r/webdev/comments/ghi789/test_topic_vs_alternative/"
+      }
+    }
+  ]
+}

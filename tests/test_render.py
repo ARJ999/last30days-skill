@@ -18,7 +18,7 @@ class TestRenderCompact(unittest.TestCase):
             range_to="2026-01-31",
             generated_at="2026-01-31T12:00:00Z",
             mode="full",
-            xai_model_used="grok-4-1-fast",
+            xai_model_used="grok-4-1-fast-reasoning",
         )
 
         result = render.render_compact(report)
@@ -93,7 +93,7 @@ class TestRenderFullReport(unittest.TestCase):
             range_to="2026-01-31",
             generated_at="2026-01-31T12:00:00Z",
             mode="full",
-            xai_model_used="grok-4-1-fast",
+            xai_model_used="grok-4-1-fast-reasoning",
         )
 
         result = render.render_full_report(report)

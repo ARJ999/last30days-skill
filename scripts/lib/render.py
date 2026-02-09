@@ -342,6 +342,60 @@ def _render_web_section(lines: list, report: schema.Report, limit: int):
             if item.extra_snippets:
                 for es in item.extra_snippets[:2]:
                     lines.append(f"  > {es[:120]}")
+
+            # Schema-enriched data (ratings, reviews, products, etc.)
+            if item.schema_data:
+                sd = item.schema_data
+                parts = []
+                if sd.get("rating"):
+                    r = sd["rating"]
+                    val = r.get("value", "?")
+                    best = r.get("best", "5")
+                    count = r.get("review_count")
+                    count_str = f" ({count} reviews)" if count else ""
+                    parts.append(f"Rating: {val}/{best}{count_str}")
+                if sd.get("article"):
+                    art = sd["article"]
+                    if art.get("authors"):
+                        parts.append(f"By: {', '.join(art['authors'][:2])}")
+                    if art.get("publisher"):
+                        parts.append(f"Publisher: {art['publisher']}")
+                if sd.get("product"):
+                    prod = sd["product"]
+                    if prod.get("name"):
+                        parts.append(f"Product: {prod['name']}")
+                    if prod.get("rating"):
+                        pr = prod["rating"]
+                        parts.append(f"Product rating: {pr.get('value', '?')}/{pr.get('best', '5')}")
+                if sd.get("review"):
+                    rev = sd["review"]
+                    if rev.get("name"):
+                        parts.append(f"Review: {rev['name'][:60]}")
+                if sd.get("book"):
+                    bk = sd["book"]
+                    if bk.get("title"):
+                        parts.append(f"Book: {bk['title'][:60]}")
+                if sd.get("recipe"):
+                    rec = sd["recipe"]
+                    if rec.get("name"):
+                        parts.append(f"Recipe: {rec['name'][:60]}")
+                if sd.get("qa"):
+                    qa = sd["qa"]
+                    if qa.get("question"):
+                        parts.append(f"Q: {qa['question'][:60]}")
+                if parts:
+                    lines.append(f"  [{' | '.join(parts)}]")
+
+            # Deep results (sitelinks, nested content)
+            if item.deep_results:
+                dr = item.deep_results
+                if dr.get("buttons"):
+                    btn_titles = [b["title"] for b in dr["buttons"][:4]]
+                    lines.append(f"  Sitelinks: {' | '.join(btn_titles)}")
+                if dr.get("news"):
+                    for n in dr["news"][:2]:
+                        lines.append(f"  > News: {n['title'][:80]}")
+
             lines.append("")
 
 
@@ -543,6 +597,20 @@ def render_full_report(report: schema.Report) -> str:
             lines.append(f"- **URL:** {item.url}")
             lines.append(f"- **Date:** {item.date or 'Unknown'}")
             lines.append(f"- **Score:** {item.score}/100")
+            if item.has_schema_data:
+                lines.append("- **Schema Data:** Available")
+            if item.schema_data:
+                sd = item.schema_data
+                if sd.get("rating"):
+                    r = sd["rating"]
+                    lines.append(f"- **Rating:** {r.get('value', '?')}/{r.get('best', '5')}")
+                if sd.get("article") and sd["article"].get("authors"):
+                    lines.append(f"- **Authors:** {', '.join(sd['article']['authors'])}")
+                if sd.get("product") and sd["product"].get("name"):
+                    lines.append(f"- **Product:** {sd['product']['name']}")
+            if item.deep_results and item.deep_results.get("buttons"):
+                btns = [b["title"] for b in item.deep_results["buttons"][:4]]
+                lines.append(f"- **Sitelinks:** {', '.join(btns)}")
             if item.snippet:
                 lines.append("")
                 lines.append(f"> {item.snippet}")

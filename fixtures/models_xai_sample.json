@@ -2,6 +2,12 @@
   "object": "list",
   "data": [
     {
+      "id": "grok-4-1-fast-reasoning",
+      "object": "model",
+      "created": 1706227200,
+      "owned_by": "xai"
+    },
+    {
       "id": "grok-4-1-fast",
       "object": "model",
       "created": 1706140800,

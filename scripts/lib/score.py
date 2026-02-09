@@ -20,6 +20,8 @@ WEB_WEIGHT_RELEVANCE = 0.55
 WEB_WEIGHT_RECENCY = 0.45
 WEB_SOURCE_PENALTY = 10  # Points deducted for lacking engagement
 WEB_SCHEMA_BONUS = 5     # Bonus for schema-enriched results
+WEB_RICH_SCHEMA_BONUS = 3  # Additional bonus for extracted schema data (rating, review, etc.)
+WEB_DEEP_RESULTS_BONUS = 3  # Bonus for deep results (sitelinks, nested content)
 WEB_EXTRA_SNIPPETS_BONUS = 3  # Bonus for having extra snippets
 
 # Video weights (no engagement, balanced)
@@ -281,6 +283,14 @@ def score_web_items(items: List[schema.WebItem]) -> List[schema.WebItem]:
         # Schema data bonus (structured data = higher quality page)
         if item.has_schema_data:
             overall += WEB_SCHEMA_BONUS
+
+        # Rich schema data bonus (rating, review, product, etc.)
+        if item.schema_data:
+            overall += WEB_RICH_SCHEMA_BONUS
+
+        # Deep results bonus (sitelinks, nested news/videos)
+        if item.deep_results:
+            overall += WEB_DEEP_RESULTS_BONUS
 
         # Extra snippets bonus (more content = more relevant)
         if item.extra_snippets:

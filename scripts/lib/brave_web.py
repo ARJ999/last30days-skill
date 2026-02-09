@@ -48,6 +48,233 @@ def _extract_domain(url: str) -> str:
         return ""
 
 
+def _extract_rating(raw: Any) -> Optional[Dict[str, Any]]:
+    """Extract rating from a Brave result field."""
+    if not isinstance(raw, dict):
+        return None
+    rating = {}
+    if "ratingValue" in raw or "best_rating" in raw or "review_count" in raw:
+        if raw.get("ratingValue") is not None:
+            rating["value"] = raw["ratingValue"]
+        if raw.get("best_rating") is not None:
+            rating["best"] = raw["best_rating"]
+        if raw.get("review_count") is not None:
+            rating["review_count"] = raw["review_count"]
+        return rating if rating else None
+    return None
+
+
+def _extract_schema_data(result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Extract schema.org structured data from a web search result.
+
+    Brave Pro AI returns rich structured data including ratings, reviews,
+    articles, products, recipes, books, creative works, and more.
+    """
+    data = {}
+
+    # Rating (standalone or embedded in other schemas)
+    rating_raw = result.get("rating")
+    if isinstance(rating_raw, dict):
+        rating = _extract_rating(rating_raw)
+        if rating:
+            data["rating"] = rating
+
+    # Article metadata
+    article = result.get("article")
+    if isinstance(article, dict):
+        art = {}
+        authors = article.get("author", [])
+        if authors and isinstance(authors, list):
+            art["authors"] = [a.get("name", "") for a in authors if isinstance(a, dict) and a.get("name")]
+        if article.get("date"):
+            art["date"] = article["date"]
+        publisher = article.get("publisher")
+        if isinstance(publisher, dict) and publisher.get("name"):
+            art["publisher"] = publisher["name"]
+        if article.get("isAccessibleForFree") is not None:
+            art["is_free"] = article["isAccessibleForFree"]
+        if art:
+            data["article"] = art
+
+    # Review
+    review = result.get("review")
+    if isinstance(review, dict):
+        rev = {}
+        if review.get("name"):
+            rev["name"] = review["name"][:100]
+        if review.get("description"):
+            rev["description"] = review["description"][:200]
+        rev_rating = review.get("rating")
+        if isinstance(rev_rating, dict):
+            parsed = _extract_rating(rev_rating)
+            if parsed:
+                rev["rating"] = parsed
+        if rev:
+            data["review"] = rev
+
+    # Product cluster
+    product = result.get("product_cluster") or result.get("product")
+    if isinstance(product, list) and product:
+        product = product[0]
+    if isinstance(product, dict):
+        prod = {}
+        if product.get("name"):
+            prod["name"] = product["name"][:100]
+        prod_rating = product.get("rating")
+        if isinstance(prod_rating, dict):
+            parsed = _extract_rating(prod_rating)
+            if parsed:
+                prod["rating"] = parsed
+        if prod:
+            data["product"] = prod
+
+    # Recipe
+    recipe = result.get("recipe")
+    if isinstance(recipe, dict):
+        rec = {}
+        if recipe.get("name"):
+            rec["name"] = recipe["name"][:100]
+        rec_rating = recipe.get("rating")
+        if isinstance(rec_rating, dict):
+            parsed = _extract_rating(rec_rating)
+            if parsed:
+                rec["rating"] = parsed
+        if rec:
+            data["recipe"] = rec
+
+    # Book
+    book = result.get("book")
+    if isinstance(book, dict):
+        bk = {}
+        if book.get("title"):
+            bk["title"] = book["title"][:100]
+        authors = book.get("author", [])
+        if authors and isinstance(authors, list):
+            bk["authors"] = [a.get("name", "") for a in authors if isinstance(a, dict) and a.get("name")]
+        if book.get("date"):
+            bk["date"] = book["date"]
+        if book.get("pages"):
+            bk["pages"] = book["pages"]
+        bk_rating = book.get("rating")
+        if isinstance(bk_rating, dict):
+            parsed = _extract_rating(bk_rating)
+            if parsed:
+                bk["rating"] = parsed
+        if bk:
+            data["book"] = bk
+
+    # Creative work (music, film, etc.)
+    creative = result.get("creative_work")
+    if isinstance(creative, dict):
+        cw = {}
+        if creative.get("name"):
+            cw["name"] = creative["name"][:100]
+        cw_rating = creative.get("rating")
+        if isinstance(cw_rating, dict):
+            parsed = _extract_rating(cw_rating)
+            if parsed:
+                cw["rating"] = parsed
+        if cw:
+            data["creative_work"] = cw
+
+    # Movie
+    movie = result.get("movie")
+    if isinstance(movie, dict):
+        mv = {}
+        if movie.get("name"):
+            mv["name"] = movie["name"][:100]
+        mv_rating = movie.get("rating")
+        if isinstance(mv_rating, dict):
+            parsed = _extract_rating(mv_rating)
+            if parsed:
+                mv["rating"] = parsed
+        if mv:
+            data["movie"] = mv
+
+    # Q&A
+    qa = result.get("qa")
+    if isinstance(qa, dict):
+        q = {}
+        if qa.get("question"):
+            q["question"] = qa["question"][:200]
+        if qa.get("answer"):
+            q["answer"] = qa["answer"][:300]
+        if q:
+            data["qa"] = q
+
+    # Music recording
+    music = result.get("music_recording")
+    if isinstance(music, dict):
+        mr = {}
+        if music.get("name"):
+            mr["name"] = music["name"][:100]
+        mr_rating = music.get("rating")
+        if isinstance(mr_rating, dict):
+            parsed = _extract_rating(mr_rating)
+            if parsed:
+                mr["rating"] = parsed
+        if mr:
+            data["music"] = mr
+
+    # Result subtype (e.g. "generic", "article", "product")
+    subtype = result.get("subtype")
+    if subtype:
+        data["subtype"] = subtype
+
+    return data if data else None
+
+
+def _extract_deep_results(result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Extract deep results (aggregated nested content) from a web search result.
+
+    Deep results contain news articles, sitelink buttons, social profiles,
+    videos, and images found within the context of this web result.
+    """
+    deep = result.get("deep_results")
+    if not isinstance(deep, dict):
+        return None
+
+    data = {}
+
+    # Sitelink buttons (sub-pages of the domain)
+    buttons = deep.get("buttons", [])
+    if isinstance(buttons, list) and buttons:
+        data["buttons"] = [
+            {"title": b.get("title", "")[:80], "url": b.get("url", "")}
+            for b in buttons[:6]
+            if isinstance(b, dict) and b.get("title")
+        ]
+
+    # Nested news results
+    news = deep.get("news", [])
+    if isinstance(news, list) and news:
+        data["news"] = [
+            {"title": n.get("title", "")[:120], "url": n.get("url", ""), "age": n.get("age", "")}
+            for n in news[:3]
+            if isinstance(n, dict) and n.get("title")
+        ]
+
+    # Social profiles
+    social = deep.get("social", [])
+    if isinstance(social, list) and social:
+        data["social"] = [
+            {"name": s.get("long_name", s.get("name", ""))[:60], "url": s.get("url", "")}
+            for s in social[:5]
+            if isinstance(s, dict) and (s.get("name") or s.get("long_name"))
+        ]
+
+    # Nested videos
+    videos = deep.get("videos", [])
+    if isinstance(videos, list) and videos:
+        data["videos"] = [
+            {"title": v.get("title", "")[:120], "url": v.get("url", "")}
+            for v in videos[:3]
+            if isinstance(v, dict) and v.get("title")
+        ]
+
+    return data if data else None
+
+
 def search_web(
     client: brave_client.BraveClient,
     topic: str,
@@ -152,6 +379,12 @@ def parse_web_results(response: Dict[str, Any]) -> List[Dict[str, Any]]:
         page_age = _parse_page_age(result.get("page_age"))
         has_schema = bool(result.get("schemas"))
 
+        # Extract schema.org structured data
+        schema_data = _extract_schema_data(result)
+
+        # Extract deep results (nested news, buttons, videos, images)
+        deep_results = _extract_deep_results(result)
+
         # Position-based relevance
         relevance = max(0.2, 1.0 - (i / max(total, 1)) * 0.8)
 
@@ -164,6 +397,8 @@ def parse_web_results(response: Dict[str, Any]) -> List[Dict[str, Any]]:
             "extra_snippets": [s[:200] for s in (extra_snippets or [])[:5]],
             "date": page_age,
             "has_schema_data": has_schema,
+            "schema_data": schema_data,
+            "deep_results": deep_results,
             "relevance": relevance,
             "why_relevant": description[:150] if description else title[:150],
         })

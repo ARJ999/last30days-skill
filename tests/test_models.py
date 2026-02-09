@@ -1,4 +1,4 @@
-"""Tests for models module."""
+"""Tests for models module (xAI only)."""
 
 import sys
 import unittest
@@ -10,133 +10,86 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 from lib import models
 
 
-class TestParseVersion(unittest.TestCase):
-    def test_simple_version(self):
-        result = models.parse_version("gpt-5")
-        self.assertEqual(result, (5,))
+class TestIsGrokSearchCapable(unittest.TestCase):
+    def test_grok_base_is_capable(self):
+        self.assertTrue(models.is_grok_search_capable("grok-4-1"))
 
-    def test_minor_version(self):
-        result = models.parse_version("gpt-5.2")
-        self.assertEqual(result, (5, 2))
+    def test_grok_fast_is_capable(self):
+        self.assertTrue(models.is_grok_search_capable("grok-4-1-fast"))
 
-    def test_patch_version(self):
-        result = models.parse_version("gpt-5.2.1")
-        self.assertEqual(result, (5, 2, 1))
+    def test_grok_embed_is_not_capable(self):
+        self.assertFalse(models.is_grok_search_capable("grok-embed-v1"))
 
-    def test_no_version(self):
-        result = models.parse_version("custom-model")
-        self.assertIsNone(result)
+    def test_grok_vision_is_not_capable(self):
+        self.assertFalse(models.is_grok_search_capable("grok-vision-v1"))
 
+    def test_grok_reasoning_is_not_capable(self):
+        self.assertFalse(models.is_grok_search_capable("grok-3-reasoning"))
 
-class TestIsMainlineOpenAIModel(unittest.TestCase):
-    def test_gpt5_is_mainline(self):
-        self.assertTrue(models.is_mainline_openai_model("gpt-5"))
-
-    def test_gpt52_is_mainline(self):
-        self.assertTrue(models.is_mainline_openai_model("gpt-5.2"))
-
-    def test_gpt5_mini_is_not_mainline(self):
-        self.assertFalse(models.is_mainline_openai_model("gpt-5-mini"))
-
-    def test_gpt4_is_not_mainline(self):
-        self.assertFalse(models.is_mainline_openai_model("gpt-4"))
-
-
-class TestSelectOpenAIModel(unittest.TestCase):
-    def test_pinned_policy(self):
-        result = models.select_openai_model(
-            "fake-key",
-            policy="pinned",
-            pin="gpt-5.1"
-        )
-        self.assertEqual(result, "gpt-5.1")
-
-    def test_auto_with_mock_models(self):
-        mock_models = [
-            {"id": "gpt-5.2", "created": 1704067200},
-            {"id": "gpt-5.1", "created": 1701388800},
-            {"id": "gpt-5", "created": 1698710400},
-        ]
-        result = models.select_openai_model(
-            "fake-key",
-            policy="auto",
-            mock_models=mock_models
-        )
-        self.assertEqual(result, "gpt-5.2")
-
-    def test_auto_filters_variants(self):
-        mock_models = [
-            {"id": "gpt-5.2", "created": 1704067200},
-            {"id": "gpt-5-mini", "created": 1704067200},
-            {"id": "gpt-5.1", "created": 1701388800},
-        ]
-        result = models.select_openai_model(
-            "fake-key",
-            policy="auto",
-            mock_models=mock_models
-        )
-        self.assertEqual(result, "gpt-5.2")
+    def test_non_grok_is_not_capable(self):
+        self.assertFalse(models.is_grok_search_capable("llama-3"))
 
 
 class TestSelectXAIModel(unittest.TestCase):
     def test_latest_policy(self):
-        # Clear cache first to avoid interference
         from lib import cache
         cache.MODEL_CACHE_FILE.unlink(missing_ok=True)
+        mock_models = [
+            {"id": "grok-4-1-fast", "created": 1704067200},
+            {"id": "grok-4-1", "created": 1704067200},
+            {"id": "grok-3", "created": 1701388800},
+        ]
         result = models.select_xai_model(
             "fake-key",
-            policy="latest"
+            policy="latest",
+            mock_models=mock_models,
         )
-        # Latest now defaults to grok-4-1 (most capable with x_search)
-        self.assertEqual(result, "grok-4-1")
+        self.assertEqual(result, "grok-4-1-fast")
 
     def test_stable_policy(self):
-        # Clear cache first to avoid interference
         from lib import cache
         cache.MODEL_CACHE_FILE.unlink(missing_ok=True)
         result = models.select_xai_model(
             "fake-key",
-            policy="stable"
+            policy="stable",
         )
-        # Stable now uses grok-4-1-fast
         self.assertEqual(result, "grok-4-1-fast")
 
     def test_pinned_policy(self):
         result = models.select_xai_model(
             "fake-key",
             policy="pinned",
-            pin="grok-3"
+            pin="grok-3",
         )
         self.assertEqual(result, "grok-3")
+
+    def test_fallback_when_no_models(self):
+        from lib import cache
+        cache.MODEL_CACHE_FILE.unlink(missing_ok=True)
+        result = models.select_xai_model(
+            "fake-key",
+            policy="latest",
+            mock_models=[],
+        )
+        self.assertEqual(result, "grok-4-1-fast")
 
 
 class TestGetModels(unittest.TestCase):
     def test_no_keys_returns_none(self):
         config = {}
         result = models.get_models(config)
-        self.assertIsNone(result["openai"])
         self.assertIsNone(result["xai"])
 
-    def test_openai_key_only(self):
-        config = {"OPENAI_API_KEY": "sk-test"}
-        mock_models = [{"id": "gpt-5.2", "created": 1704067200}]
-        result = models.get_models(config, mock_openai_models=mock_models)
-        self.assertEqual(result["openai"], "gpt-5.2")
-        self.assertIsNone(result["xai"])
-
-    def test_both_keys(self):
-        # Clear cache first
+    def test_xai_key_selects_model(self):
         from lib import cache
         cache.MODEL_CACHE_FILE.unlink(missing_ok=True)
-        config = {
-            "OPENAI_API_KEY": "sk-test",
-            "XAI_API_KEY": "xai-test",
-        }
-        mock_openai = [{"id": "gpt-5.2", "created": 1704067200}]
-        mock_xai = [{"id": "grok-4-1", "created": 1704067200}]
-        result = models.get_models(config, mock_openai, mock_xai)
-        self.assertEqual(result["openai"], "gpt-5.2")
-        self.assertEqual(result["xai"], "grok-4-1")
+        config = {"XAI_API_KEY": "xai-test"}
+        mock_xai = [
+            {"id": "grok-4-1-fast", "created": 1704067200},
+            {"id": "grok-4-1", "created": 1704067200},
+        ]
+        result = models.get_models(config, mock_xai_models=mock_xai)
+        self.assertEqual(result["xai"], "grok-4-1-fast")
 
 
 if __name__ == "__main__":

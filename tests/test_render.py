@@ -17,17 +17,15 @@ class TestRenderCompact(unittest.TestCase):
             range_from="2026-01-01",
             range_to="2026-01-31",
             generated_at="2026-01-31T12:00:00Z",
-            mode="both",
-            openai_model_used="gpt-5.2",
-            xai_model_used="grok-4-latest",
+            mode="full",
+            xai_model_used="grok-4-1-fast",
         )
 
         result = render.render_compact(report)
 
         self.assertIn("test topic", result)
         self.assertIn("2026-01-01", result)
-        self.assertIn("both", result)
-        self.assertIn("gpt-5.2", result)
+        self.assertIn("full", result)
 
     def test_renders_reddit_items(self):
         report = schema.Report(
@@ -78,7 +76,7 @@ class TestRenderContextSnippet(unittest.TestCase):
             range_from="2026-01-01",
             range_to="2026-01-31",
             generated_at="2026-01-31T12:00:00Z",
-            mode="both",
+            mode="full",
         )
 
         result = render.render_context_snippet(report)
@@ -94,16 +92,14 @@ class TestRenderFullReport(unittest.TestCase):
             range_from="2026-01-01",
             range_to="2026-01-31",
             generated_at="2026-01-31T12:00:00Z",
-            mode="both",
-            openai_model_used="gpt-5.2",
-            xai_model_used="grok-4-latest",
+            mode="full",
+            xai_model_used="grok-4-1-fast",
         )
 
         result = render.render_full_report(report)
 
         self.assertIn("# test topic", result)
-        self.assertIn("## Models Used", result)
-        self.assertIn("gpt-5.2", result)
+        self.assertIn("grok-4-1-fast", result)
 
 
 class TestGetContextPath(unittest.TestCase):

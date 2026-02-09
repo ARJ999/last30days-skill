@@ -40,8 +40,10 @@ class BraveClient:
     Reuses the stdlib-only HTTP client from http.py.
     """
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, search_lang: str = None, country: str = None):
         self.api_key = api_key
+        self.search_lang = search_lang
+        self.country = country
         self._headers = {
             "X-Subscription-Token": api_key,
             "Accept": "application/json",
@@ -110,6 +112,8 @@ class BraveClient:
         summary: bool = False,
         result_filter: Optional[str] = None,
         goggles: Optional[str] = None,
+        search_lang: Optional[str] = None,
+        country: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Execute Brave Web Search.
 
@@ -122,6 +126,8 @@ class BraveClient:
             summary: Request summarizer key in response
             result_filter: Comma-separated result types (web,discussions,faq,infobox,etc.)
             goggles: Custom re-ranking rules (inline DSL or URL)
+            search_lang: Language for search results (e.g. 'en')
+            country: Country for search localization (e.g. 'us')
 
         Returns:
             Full Brave Web Search response
@@ -133,6 +139,7 @@ class BraveClient:
             "safesearch": "off",
             "extra_snippets": str(extra_snippets).lower(),
             "text_decorations": "false",
+            "spellcheck": "true",
         }
         if freshness:
             params["freshness"] = freshness
@@ -142,6 +149,12 @@ class BraveClient:
             params["result_filter"] = result_filter
         if goggles:
             params["goggles"] = goggles
+        lang = search_lang or self.search_lang
+        ctry = country or self.country
+        if lang:
+            params["search_lang"] = lang
+        if ctry:
+            params["country"] = ctry
 
         return self._request(BRAVE_WEB_SEARCH_URL, params)
 
@@ -152,6 +165,8 @@ class BraveClient:
         count: int = 20,
         offset: int = 0,
         extra_snippets: bool = True,
+        search_lang: Optional[str] = None,
+        country: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Execute Brave News Search.
 
@@ -161,6 +176,8 @@ class BraveClient:
             count: Results per page (max 50 for news)
             offset: Page offset (0-9)
             extra_snippets: Return additional excerpts
+            search_lang: Language for search results
+            country: Country for localization
 
         Returns:
             Brave News Search response
@@ -171,9 +188,16 @@ class BraveClient:
             "offset": min(offset, 9),
             "safesearch": "off",
             "extra_snippets": str(extra_snippets).lower(),
+            "spellcheck": "true",
         }
         if freshness:
             params["freshness"] = freshness
+        lang = search_lang or self.search_lang
+        ctry = country or self.country
+        if lang:
+            params["search_lang"] = lang
+        if ctry:
+            params["country"] = ctry
 
         return self._request(BRAVE_NEWS_SEARCH_URL, params)
 
@@ -183,6 +207,8 @@ class BraveClient:
         freshness: Optional[str] = None,
         count: int = 20,
         offset: int = 0,
+        search_lang: Optional[str] = None,
+        country: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Execute Brave Video Search.
 
@@ -191,6 +217,8 @@ class BraveClient:
             freshness: Date filter
             count: Results per page
             offset: Page offset
+            search_lang: Language for search results
+            country: Country for localization
 
         Returns:
             Brave Video Search response
@@ -200,9 +228,16 @@ class BraveClient:
             "count": min(count, 20),
             "offset": min(offset, 9),
             "safesearch": "off",
+            "spellcheck": "true",
         }
         if freshness:
             params["freshness"] = freshness
+        lang = search_lang or self.search_lang
+        ctry = country or self.country
+        if lang:
+            params["search_lang"] = lang
+        if ctry:
+            params["country"] = ctry
 
         return self._request(BRAVE_VIDEO_SEARCH_URL, params)
 

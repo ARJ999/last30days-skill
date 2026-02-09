@@ -2,7 +2,13 @@
   "object": "list",
   "data": [
     {
-      "id": "grok-4-latest",
+      "id": "grok-4-1-fast",
+      "object": "model",
+      "created": 1706140800,
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-4-1",
       "object": "model",
       "created": 1704067200,
       "owned_by": "xai"

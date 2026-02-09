@@ -18,6 +18,8 @@ class Engagement:
     reposts: Optional[int] = None
     replies: Optional[int] = None
     quotes: Optional[int] = None
+    views: Optional[int] = None
+    bookmarks: Optional[int] = None
 
     # HackerNews fields
     points: Optional[int] = None
@@ -38,6 +40,10 @@ class Engagement:
             d['replies'] = self.replies
         if self.quotes is not None:
             d['quotes'] = self.quotes
+        if self.views is not None:
+            d['views'] = self.views
+        if self.bookmarks is not None:
+            d['bookmarks'] = self.bookmarks
         if self.points is not None:
             d['points'] = self.points
         return d if d else None
@@ -125,6 +131,7 @@ class XItem:
     date_confidence: str = "low"
     engagement: Optional[Engagement] = None
     engagement_verified: bool = False
+    has_media: bool = False
     relevance: float = 0.5
     why_relevant: str = ""
     subs: SubScores = field(default_factory=SubScores)
@@ -140,6 +147,7 @@ class XItem:
             'date_confidence': self.date_confidence,
             'engagement': self.engagement.to_dict() if self.engagement else None,
             'engagement_verified': self.engagement_verified,
+            'has_media': self.has_media,
             'relevance': self.relevance,
             'why_relevant': self.why_relevant,
             'subs': self.subs.to_dict(),
@@ -483,6 +491,14 @@ class Report:
                 return SubScores()
             return SubScores(**raw)
 
+        def _build_data_quality(raw: Optional[Dict]) -> Optional[DataQuality]:
+            if not raw:
+                return None
+            # Remove computed properties that aren't constructor args
+            clean = {k: v for k, v in raw.items()
+                     if k not in ('verified_dates_percent', 'verified_engagement_percent')}
+            return DataQuality(**clean)
+
         # Reconstruct Reddit items
         reddit_items = []
         for r in data.get('reddit', []):
@@ -510,6 +526,7 @@ class Report:
                 date=x.get('date'), date_confidence=x.get('date_confidence', 'low'),
                 engagement=_build_engagement(x.get('engagement')),
                 engagement_verified=x.get('engagement_verified', False),
+                has_media=x.get('has_media', False),
                 relevance=x.get('relevance', 0.5),
                 why_relevant=x.get('why_relevant', ''),
                 subs=_build_subs(x.get('subs')),
@@ -623,6 +640,7 @@ class Report:
             from_cache=data.get('from_cache', False),
             cache_age_hours=data.get('cache_age_hours'),
             context_snippet_md=data.get('context_snippet_md', ''),
+            data_quality=_build_data_quality(data.get('data_quality')),
         )
 
 

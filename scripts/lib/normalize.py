@@ -83,6 +83,7 @@ def normalize_x_items(
             engagement = schema.Engagement(
                 likes=eng_raw.get("likes"), reposts=eng_raw.get("reposts"),
                 replies=eng_raw.get("replies"), quotes=eng_raw.get("quotes"),
+                views=eng_raw.get("views"), bookmarks=eng_raw.get("bookmarks"),
             )
         date_str = item.get("date")
         date_confidence = dates.get_date_confidence(date_str, from_date, to_date)
@@ -94,6 +95,7 @@ def normalize_x_items(
             url=item.get("url", ""), author_handle=item.get("author_handle", ""),
             date=date_str, date_confidence=date_confidence,
             engagement=engagement, engagement_verified=engagement_verified,
+            has_media=bool(item.get("has_media", False)),
             relevance=item.get("relevance", 0.5),
             why_relevant=item.get("why_relevant", ""),
         ))

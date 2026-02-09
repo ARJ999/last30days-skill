@@ -9,6 +9,15 @@ from . import schema
 OUTPUT_DIR = Path.home() / ".local" / "share" / "last30days" / "out"
 
 
+def _format_count(n: int) -> str:
+    """Format large numbers for compact display (e.g. 10500 -> '10.5K')."""
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}M"
+    if n >= 1_000:
+        return f"{n / 1_000:.1f}K"
+    return str(n)
+
+
 def ensure_output_dir():
     """Ensure output directory exists."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -235,13 +244,18 @@ def _render_x_section(lines: list, report: schema.Report, limit: int):
                     parts.append(f"{eng.likes}likes")
                 if eng.reposts is not None:
                     parts.append(f"{eng.reposts}rt")
+                if eng.views is not None:
+                    parts.append(f"{_format_count(eng.views)}views")
+                if eng.bookmarks is not None:
+                    parts.append(f"{eng.bookmarks}saved")
                 if parts:
                     eng_str = f" [{', '.join(parts)}]"
 
             date_str = f" ({item.date})" if item.date else " (date unknown)"
             conf_str = f" [date:{item.date_confidence}]" if item.date_confidence != "high" else ""
+            media_str = " [media]" if item.has_media else ""
 
-            lines.append(f"**{item.id}** (score:{item.score}) @{item.author_handle}{date_str}{conf_str}{eng_str}")
+            lines.append(f"**{item.id}** (score:{item.score}) @{item.author_handle}{date_str}{conf_str}{eng_str}{media_str}")
             text_preview = item.text[:200] + "..." if len(item.text) > 200 else item.text
             lines.append(f"  {text_preview}")
             lines.append(f"  {item.url}")

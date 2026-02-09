@@ -50,6 +50,8 @@ def get_config() -> Dict[str, str]:
     # Environment variables override .env
     env_keys = [
         "BRAVE_API_KEY",
+        "BRAVE_SEARCH_LANG",
+        "BRAVE_COUNTRY",
         "XAI_API_KEY",
         "XAI_MODEL_POLICY",
         "XAI_MODEL_PIN",

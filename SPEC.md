@@ -19,7 +19,7 @@ The orchestrator (`last30days.py`) coordinates discovery, enrichment, normalizat
 - **dates.py**: Date range calculation, recency scoring, and date confidence
 - **cache.py**: 24-hour TTL caching keyed by topic + date range + source mode
 - **http.py**: stdlib-only HTTP client with retry logic
-- **models.py**: xAI model auto-selection with 7-day caching
+- **models.py**: xAI model auto-selection (prefers grok-4-1-fast for agentic search) with daily caching
 - **schema.py**: Dataclass schemas for all 7 item types + Report + DataQuality
 
 ### Source Modules (Brave Search API)
@@ -31,7 +31,7 @@ The orchestrator (`last30days.py`) coordinates discovery, enrichment, normalizat
 - **brave_summarizer.py**: Two-step AI summarizer (free, not billed separately)
 
 ### Source Modules (Other APIs)
-- **xai_x.py**: xAI Responses API + x_search for X/Twitter
+- **xai_x.py**: xAI Responses API + x_search with native date/media params for X/Twitter
 - **hn.py**: HackerNews Algolia API (free, no auth required)
 - **reddit_enrich.py**: Fetch Reddit thread JSON for real engagement metrics
 
@@ -45,17 +45,24 @@ The orchestrator (`last30days.py`) coordinates discovery, enrichment, normalizat
 ## Source Strategy
 
 ### Brave Search API (Pro Data AI Plan)
-- **Web Search**: `GET /res/v1/web/search` with `freshness`, `extra_snippets`, `summary`, `result_filter`
-- **News Search**: `GET /res/v1/news/search` with `freshness`, `count` up to 50
-- **Video Search**: `GET /res/v1/videos/search` with `freshness`
-- **Summarizer**: `GET /res/v1/summarizer/search` with `key` from web search (free)
+- **Web Search**: `GET /res/v1/web/search` with `freshness`, `extra_snippets`, `summary`, `result_filter`, `spellcheck`, `search_lang`, `country`, `goggles`
+- **News Search**: `GET /res/v1/news/search` with `freshness`, `count` up to 50, `spellcheck`, `search_lang`, `country`
+- **Video Search**: `GET /res/v1/videos/search` with `freshness`, `spellcheck`, `search_lang`, `country`
+- **Summarizer**: `GET /res/v1/summarizer/search` with `key` from web search (free, `entity_info` enabled)
 - **Reddit**: Web search with `site:reddit.com` operator + custom goggles
 - **Discussions**: Extracted from web search `result_filter=discussions`
 - **FAQ/Infobox**: Extracted from web search `result_filter=faq,infobox`
+- **Spellcheck**: Enabled on all endpoints for better results with typos
+- **Localization**: Optional `BRAVE_SEARCH_LANG` and `BRAVE_COUNTRY` config
 
 ### xAI API (X/Twitter)
-- Uses Responses API with `x_search` agent tool
-- Returns posts with real engagement: likes, reposts, replies, quotes
+- Uses Responses API (`/v1/responses`) with `x_search` agent tool
+- Native date filtering: `from_date` and `to_date` passed as tool params (ISO 8601)
+- Native image understanding: `enable_image_understanding=true` for analyzing images in posts
+- Returns posts with rich engagement: likes, reposts, replies, quotes, views, bookmarks
+- Media detection: `has_media` flag for posts containing images/video
+- Preferred model: `grok-4-1-fast` (specifically trained for agentic tool calling)
+- Handle filtering available: `allowed_x_handles` and `excluded_x_handles`
 - Sole source for X/Twitter data (no alternative)
 
 ### HackerNews Algolia API
@@ -69,6 +76,9 @@ The orchestrator (`last30days.py`) coordinates discovery, enrichment, normalizat
 - **40%** relevance + **25%** recency + **35%** engagement
 - Engagement normalized to 0-100 within batch using min-max scaling
 - +8 points for verified engagement, -15 for unknown
+- X engagement formula: 30% reposts + 25% likes + 20% views + 10% replies + 10% quotes + 5% bookmarks
+- Reddit engagement formula: 45% score + 30% upvote_ratio + 25% comments
+- HN engagement formula: 60% points + 40% comments
 
 ### News (time-sensitive, no engagement)
 - **45%** relevance + **55%** recency
@@ -176,8 +186,12 @@ BRAVE_API_KEY=your-brave-search-api-key
 XAI_API_KEY=your-xai-api-key
 
 # Optional: xAI model selection
-XAI_MODEL_POLICY=latest    # latest (auto) or stable
-XAI_MODEL_PIN=grok-4-1     # Pin to specific model
+XAI_MODEL_POLICY=latest        # latest (auto) or stable
+XAI_MODEL_PIN=grok-4-1-fast    # Pin to specific model
+
+# Optional: Brave localization
+BRAVE_SEARCH_LANG=en           # Language for search results
+BRAVE_COUNTRY=us               # Country for localization
 ```
 
 Environment variables override `.env` file values.

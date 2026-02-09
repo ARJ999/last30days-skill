@@ -73,11 +73,13 @@ def compute_reddit_engagement_raw(engagement: Optional[schema.Engagement]) -> Op
 def compute_x_engagement_raw(engagement: Optional[schema.Engagement]) -> Optional[float]:
     """Compute raw engagement score for X item.
 
-    Quality-focused formula prioritizing deep engagement:
-    - 40% reposts (deep engagement - users amplify content they strongly endorse)
-    - 35% likes (popularity/volume)
-    - 15% replies (discussion, though can be negative)
+    Quality-focused formula using all available X metrics:
+    - 30% reposts (deep engagement - users amplify content they strongly endorse)
+    - 25% likes (popularity/volume)
+    - 20% views (reach/impression - normalized with log scale)
+    - 10% replies (discussion, though can be negative)
     - 10% quotes (engagement with commentary)
+    - 5% bookmarks (save intent - strong quality signal)
     """
     if engagement is None:
         return None
@@ -88,8 +90,11 @@ def compute_x_engagement_raw(engagement: Optional[schema.Engagement]) -> Optiona
     reposts = log1p_safe(engagement.reposts)
     replies = log1p_safe(engagement.replies)
     quotes = log1p_safe(engagement.quotes)
+    views = log1p_safe(engagement.views)
+    bookmarks = log1p_safe(engagement.bookmarks)
 
-    return 0.40 * reposts + 0.35 * likes + 0.15 * replies + 0.10 * quotes
+    return (0.30 * reposts + 0.25 * likes + 0.20 * views +
+            0.10 * replies + 0.10 * quotes + 0.05 * bookmarks)
 
 
 def compute_hn_engagement_raw(engagement: Optional[schema.Engagement]) -> Optional[float]:

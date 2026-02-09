@@ -157,35 +157,6 @@ def parse_hn_response(response: Dict[str, Any]) -> List[Dict[str, Any]]:
     return items
 
 
-def compute_hn_engagement_raw(engagement: Optional[Dict]) -> Optional[float]:
-    """Compute raw engagement score for HN item.
 
-    HN uses points (upvotes) and comments as engagement metrics.
-    Formula: 0.60*log1p(points) + 0.40*log1p(num_comments)
-
-    Args:
-        engagement: Dict with points and num_comments
-
-    Returns:
-        Raw engagement score or None
-    """
-    import math
-
-    if engagement is None:
-        return None
-
-    points = engagement.get("points")
-    num_comments = engagement.get("num_comments")
-
-    if points is None and num_comments is None:
-        return None
-
-    def log1p_safe(x):
-        if x is None or x < 0:
-            return 0.0
-        return math.log1p(x)
-
-    points_score = log1p_safe(points)
-    comments_score = log1p_safe(num_comments)
-
-    return 0.60 * points_score + 0.40 * comments_score
+# NOTE: HN engagement scoring is handled by score.compute_hn_engagement_raw()
+# which operates on schema.Engagement objects (the canonical implementation).

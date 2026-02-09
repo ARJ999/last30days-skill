@@ -210,7 +210,11 @@ def run_research(
 
     brave = None
     if has_brave and not mock:
-        brave = brave_client.BraveClient(config["BRAVE_API_KEY"])
+        brave = brave_client.BraveClient(
+            config["BRAVE_API_KEY"],
+            search_lang=config.get("BRAVE_SEARCH_LANG"),
+            country=config.get("BRAVE_COUNTRY"),
+        )
 
     # Determine which searches to run based on resolved sources
     run_brave_web = has_brave and resolved_sources in ("full", "brave", "web")

@@ -23,9 +23,9 @@ DEPTH_CONFIG = {
     "deep": (40, 60),
 }
 
-X_SEARCH_PROMPT = """You have access to real-time X (Twitter) data. Search for posts about: {topic}
+X_SEARCH_PROMPT = """Search X for posts about: {topic}
 
-Focus on posts from {from_date} to {to_date}. Find {min_items}-{max_items} high-quality, relevant posts.
+Find {min_items}-{max_items} high-quality, relevant posts with substantive content.
 
 IMPORTANT: Return ONLY valid JSON in this exact format, no other text:
 {{
@@ -39,10 +39,13 @@ IMPORTANT: Return ONLY valid JSON in this exact format, no other text:
         "likes": 100,
         "reposts": 25,
         "replies": 15,
-        "quotes": 5
+        "quotes": 5,
+        "views": 10000,
+        "bookmarks": 50
       }},
       "why_relevant": "Brief explanation of relevance",
-      "relevance": 0.85
+      "relevance": 0.85,
+      "has_media": false
     }}
   ]
 }}
@@ -50,7 +53,8 @@ IMPORTANT: Return ONLY valid JSON in this exact format, no other text:
 Rules:
 - relevance is 0.0 to 1.0 (1.0 = highly relevant)
 - date must be YYYY-MM-DD format or null
-- engagement can be null if unknown
+- engagement fields can be null if unknown; include views and bookmarks when available
+- has_media: true if post contains images or video
 - Include diverse voices/accounts if applicable
 - Prefer posts with substantive content, not just links"""
 
@@ -91,19 +95,24 @@ def search_x(
     # Adjust timeout based on depth (generous for API response time)
     timeout = 90 if depth == "quick" else 120 if depth == "default" else 180
 
-    # Use Agent Tools API with x_search tool
+    # Use Agent Tools API with x_search tool and native date/media params
+    x_search_config = {
+        "type": "x_search",
+        "x_search": {
+            "from_date": from_date,
+            "to_date": to_date,
+            "enable_image_understanding": True,
+        },
+    }
+
     payload = {
         "model": model,
-        "tools": [
-            {"type": "x_search"}
-        ],
+        "tools": [x_search_config],
         "input": [
             {
                 "role": "user",
                 "content": X_SEARCH_PROMPT.format(
                     topic=topic,
-                    from_date=from_date,
-                    to_date=to_date,
                     min_items=min_items,
                     max_items=max_items,
                 ),
@@ -185,15 +194,25 @@ def parse_x_response(response: Dict[str, Any]) -> List[Dict[str, Any]]:
         if not url:
             continue
 
-        # Parse engagement
+        # Parse engagement (now includes views and bookmarks)
         engagement = None
         eng_raw = item.get("engagement")
         if isinstance(eng_raw, dict):
+            def _int_or_none(val):
+                if val is None:
+                    return None
+                try:
+                    return int(val)
+                except (ValueError, TypeError):
+                    return None
+
             engagement = {
-                "likes": int(eng_raw.get("likes", 0)) if eng_raw.get("likes") else None,
-                "reposts": int(eng_raw.get("reposts", 0)) if eng_raw.get("reposts") else None,
-                "replies": int(eng_raw.get("replies", 0)) if eng_raw.get("replies") else None,
-                "quotes": int(eng_raw.get("quotes", 0)) if eng_raw.get("quotes") else None,
+                "likes": _int_or_none(eng_raw.get("likes")),
+                "reposts": _int_or_none(eng_raw.get("reposts")),
+                "replies": _int_or_none(eng_raw.get("replies")),
+                "quotes": _int_or_none(eng_raw.get("quotes")),
+                "views": _int_or_none(eng_raw.get("views")),
+                "bookmarks": _int_or_none(eng_raw.get("bookmarks")),
             }
 
         clean_item = {
@@ -203,6 +222,7 @@ def parse_x_response(response: Dict[str, Any]) -> List[Dict[str, Any]]:
             "author_handle": str(item.get("author_handle", "")).strip().lstrip("@"),
             "date": item.get("date"),
             "engagement": engagement,
+            "has_media": bool(item.get("has_media", False)),
             "why_relevant": str(item.get("why_relevant", "")).strip(),
             "relevance": min(1.0, max(0.0, float(item.get("relevance", 0.5)))),
         }

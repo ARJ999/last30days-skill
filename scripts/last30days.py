@@ -264,7 +264,7 @@ def run_research(
         if run_x:
             if progress:
                 progress.start_x()
-            futures["x"] = executor.submit(
+            futures["xai"] = executor.submit(
                 _search_x, topic, config, selected_models, from_date, to_date, depth, mock
             )
 
@@ -285,7 +285,7 @@ def run_research(
                     err_key = {
                         "brave_web": "web", "brave_reddit": "reddit",
                         "brave_news": "news", "brave_video": "video",
-                        "x": "x", "hn": "hn",
+                        "xai": "x", "hn": "hn",
                     }.get(key, key)
                     errors[err_key] = error
                     if progress:
@@ -294,7 +294,7 @@ def run_research(
                 err_key = {
                     "brave_web": "web", "brave_reddit": "reddit",
                     "brave_news": "news", "brave_video": "video",
-                    "x": "x", "hn": "hn",
+                    "xai": "x", "hn": "hn",
                 }.get(key, key)
                 errors[err_key] = f"{type(e).__name__}: {e}"
                 if progress:

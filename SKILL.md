@@ -44,7 +44,7 @@ Common patterns:
 **Store these variables:**
 - `TOPIC = [extracted topic]`
 - `TARGET_TOOL = [extracted tool, or "unknown" if not specified]`
-- `QUERY_TYPE = [RECOMMENDATIONS | NEWS | HOW-TO | GENERAL]`
+- `QUERY_TYPE = [PROMPTING | RECOMMENDATIONS | NEWS | GENERAL]`
 
 ---
 
@@ -105,16 +105,17 @@ The script will automatically:
 **Step 2: Analyze the output**
 
 The script output will indicate the mode and include:
-- **AI Summary** (if available from Brave Summarizer)
-- **Knowledge Panel** (infobox data)
-- **FAQ** (frequently asked questions from Brave)
-- **Reddit Threads** with real engagement (upvotes, comments, insights)
-- **X Posts** with likes, reposts
-- **HackerNews** with points and comments
-- **News Articles** from news sources
-- **Web Results** from blogs, docs, tutorials
-- **Videos** from YouTube and other platforms
-- **Forum Discussions** from Stack Overflow, Discourse, etc.
+- **Data Quality Metrics** (total items, verified dates %, verified engagement %, avg recency days, sources used/failed)
+- **AI Summary** (if available from Brave Summarizer, with inline citations and follow-up questions)
+- **Knowledge Panel** (infobox with title, description, attributes, profiles)
+- **FAQ** (frequently asked questions with sourced answers from Brave)
+- **Reddit Threads** with verified engagement (upvotes, upvote_ratio, comments, top comment insights)
+- **X Posts** with full engagement (likes, reposts, replies, quotes, views, bookmarks, has_media flag)
+- **HackerNews** with verified points and comments
+- **News Articles** from news sources with publication dates
+- **Web Results** with schema-enriched data (ratings, reviews, products, articles, books, recipes, Q&A) and deep results (sitelinks, nested news)
+- **Videos** from YouTube and other platforms (with creator, duration)
+- **Forum Discussions** from Stack Overflow, Discourse, etc. (with engagement proxy from snippet richness)
 
 **Depth options** (passed through from user's command):
 - `--quick` -> Faster, fewer sources
@@ -217,13 +218,15 @@ For **full mode** (both BRAVE + XAI keys):
 ```
 ---
 All agents reported back!
-|- Reddit: {n} threads | {sum} upvotes | {sum} comments
-|- X: {n} posts | {sum} likes | {sum} reposts
-|- HN: {n} stories | {sum} points
+Data Quality: {n} items | {n}% verified dates | {n}% verified engagement | avg {n} days old
+|- Reddit: {n} threads | {sum} upvotes | {sum} comments (engagement verified)
+|- X: {n} posts | {sum} likes | {sum} reposts | {sum} views
+|- HN: {n} stories | {sum} points (engagement verified)
 |- News: {n} articles
-|- Web: {n} pages
+|- Web: {n} pages ({n} with schema data, {n} with deep results)
 |- Videos: {n} videos
 |- Discussions: {n} forums
+|- AI Summary: Available | Knowledge Panel: Available | FAQ: {n} entries
 |- Top voices: r/{sub1}, r/{sub2} | @{handle1}, @{handle2}
 ```
 
@@ -231,6 +234,7 @@ For **brave mode** (BRAVE_API_KEY only):
 ```
 ---
 Research complete!
+Data Quality: {n} items | {n}% verified dates | avg {n} days old
 |- Reddit: {n} threads | {sum} upvotes | {sum} comments
 |- HN: {n} stories | {sum} points
 |- News: {n} articles
@@ -363,7 +367,7 @@ For **full mode**:
 ```
 ---
 Expert in: {TOPIC} for {TARGET_TOOL}
-Based on: {n} Reddit threads ({sum} upvotes) + {n} X posts ({sum} likes) + {n} HN stories + {n} news + {n} web pages
+Based on: {n} Reddit threads ({sum} upvotes) + {n} X posts ({sum} likes, {sum} views) + {n} HN stories + {n} news + {n} web pages + {n} videos + {n} discussions
 
 Want another prompt? Just tell me what you're creating next.
 ```

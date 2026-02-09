@@ -69,14 +69,14 @@ Zero external Python dependencies. Uses only Python stdlib (`urllib`, `json`, `h
 ### Sources & APIs
 
 **Brave Search API** (Pro AI plan) powers 6 of 7 sources:
-- **Reddit** — Web search with `site:reddit.com` + custom goggles, enriched with real thread engagement (upvotes, comments, upvote ratio)
+- **Reddit** — Web search with `site:reddit.com` + custom goggles (boost GitHub/dev.to/StackOverflow, discard Pinterest), enriched with real thread engagement (score, upvote_ratio, num_comments, top comment excerpts, comment insights)
 - **News** — Dedicated `/news/search` endpoint with up to 50 results per page
-- **Web** — General web search with extra snippets, schema-enriched data (ratings, reviews, products, articles), deep results (sitelinks, nested news/videos), FAQ, and infobox extraction
+- **Web** — General web search with extra snippets, schema-enriched data (ratings, reviews, products, articles, books, recipes, creative works, movies, music, Q&A), deep results (sitelinks, nested news, social profiles, videos), FAQ, and infobox extraction
 - **Videos** — Dedicated `/videos/search` endpoint
 - **Discussions** — Forum threads from Stack Overflow, Discourse, etc. via `result_filter=discussions`
 - **AI Summary** — Free two-step summarizer (not billed separately) with inline citations
 
-Brave Pro AI features used: `freshness` date filtering, `extra_snippets` (up to 5 per result), `summary` key for AI summarizer, `result_filter`, `goggles` re-ranking, `spellcheck` on all endpoints, `search_lang`/`country` localization, schema.org structured data extraction (rating, review, article, product, book, recipe, creative_work, movie, music, Q&A), deep results (sitelinks, nested news/social/videos).
+Brave Pro AI features used: `freshness` date filtering, `extra_snippets` (up to 5 per result), `summary` key for AI summarizer, `result_filter`, `goggles` re-ranking (default: boost GitHub/dev.to/StackOverflow, discard Pinterest), `spellcheck` on all endpoints, `search_lang`/`country` localization, schema.org structured data extraction (rating, review, article, product, book, recipe, creative_work, movie, music_recording, Q&A, subtype), deep results (sitelinks/buttons up to 6, nested news up to 3, social profiles up to 5, nested videos up to 3).
 
 **xAI API** (Responses API) powers X/Twitter search:
 - Uses `x_search` agent tool with native `from_date`/`to_date` date filtering (ISO 8601)
@@ -104,6 +104,16 @@ env.py → models.py → parallel search (6 threads) → reddit_enrich.py
 7. **Deduplicate** — Per-source text dedup + cross-source URL dedup (priority: Reddit > X > HN > News > Discussions > Web > Videos)
 8. **Render** — Generate output in compact, markdown, JSON, or context format
 
+### Engagement Verification
+
+The `engagement_verified` flag distinguishes sources with real engagement data:
+- **Reddit**: Verified after enrichment (fetches actual score, upvote_ratio, num_comments from Reddit JSON)
+- **X/Twitter**: Verified when xAI returns likes or reposts data
+- **HN**: Always verified (Algolia returns real points and comments)
+- **News/Web/Videos/Discussions**: Never verified (no engagement data from Brave)
+
+Scoring impact: +8 points for verified, -15 for unknown/missing engagement.
+
 ### Scoring
 
 | Source | Relevance | Recency | Engagement | Notes |
@@ -114,9 +124,19 @@ env.py → models.py → parallel search (6 threads) → reddit_enrich.py
 | News | 45% | 55% | — | Time-sensitive, no engagement |
 | Web | 55% | 45% | — | -10pt source penalty, +5 schema, +3 rich schema, +3 deep results, +3 extra_snippets |
 | Videos | 50% | 50% | — | Balanced |
-| Discussions | 45% | 25% | 30% | Engagement proxy from snippet count |
+| Discussions | 45% | 25% | 30% | Engagement proxy: `min(100, snippet_count × 20)` |
+
+Engagement values use `log1p()` for logarithmic scaling. Min-max normalized to 0-100 within batch.
 
 Date confidence adjustments: +5 (high), -5 (medium), -20 (low/no date).
+
+### Data Quality
+
+Each report includes transparency metrics:
+- Total items and sources used/failed
+- Verified dates and engagement percentages
+- Average item recency in days
+- AI Summary, Knowledge Panel, and FAQ availability
 
 ## CLI Reference
 
@@ -206,14 +226,14 @@ last30days-skill/
 │       ├── models.py           # xAI model auto-selection
 │       ├── schema.py           # Dataclass schemas (7 item types + Report)
 │       ├── brave_client.py     # Brave Search API client (auth, rate limit, errors)
-│       ├── brave_web.py        # Web search + discussions + FAQ + infobox
+│       ├── brave_web.py        # Web search + discussions + FAQ + infobox + schema + deep results
 │       ├── brave_reddit.py     # Reddit search via site:reddit.com
 │       ├── brave_news.py       # News search endpoint
 │       ├── brave_video.py      # Video search endpoint
 │       ├── brave_summarizer.py # AI summarizer (two-step, free)
 │       ├── xai_x.py            # xAI Responses API + x_search tool
 │       ├── hn.py               # HackerNews Algolia API
-│       ├── reddit_enrich.py    # Reddit thread JSON enrichment
+│       ├── reddit_enrich.py    # Reddit thread JSON enrichment (score, ratio, comments, insights)
 │       ├── normalize.py        # Raw API → canonical schema (7 normalizers)
 │       ├── score.py            # Engagement-aware scoring
 │       ├── dedupe.py           # Text + URL deduplication

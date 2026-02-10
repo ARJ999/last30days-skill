@@ -154,7 +154,12 @@ def extract_citations(response: Dict[str, Any]) -> List[str]:
 
 
 def extract_annotations(response: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Extract rich annotations (url_citation) from response message."""
+    """Extract rich annotations (url_citation) from response message.
+
+    Handles both formats:
+    - Nested: {"type": "url_citation", "url_citation": {"url": ..., "title": ..., "content": ...}}
+    - Flat: {"type": "url_citation", "url": ..., "title": ..., "content": ...}
+    """
     choices = response.get("choices", [])
     if not choices:
         return []
@@ -165,12 +170,20 @@ def extract_annotations(response: Dict[str, Any]) -> List[Dict[str, Any]]:
         if not isinstance(ann, dict):
             continue
         if ann.get("type") == "url_citation":
-            cite = ann.get("url_citation", {})
-            if cite.get("url"):
+            # Try nested format first, then flat format
+            cite = ann.get("url_citation")
+            if isinstance(cite, dict) and cite.get("url"):
                 result.append({
                     "url": cite["url"],
                     "title": cite.get("title", ""),
                     "snippet": cite.get("content", ""),
+                })
+            elif ann.get("url"):
+                # Flat format: url/title/content directly on annotation
+                result.append({
+                    "url": ann["url"],
+                    "title": ann.get("title", ""),
+                    "snippet": ann.get("content", ""),
                 })
     return result
 

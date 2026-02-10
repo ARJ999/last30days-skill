@@ -283,7 +283,7 @@ def score_web_items(items: List[schema.WebItem]) -> List[schema.WebItem]:
             overall += WEB_EXTRA_SNIPPETS_BONUS
 
         # Citation bonus (items from deep research citations are higher quality)
-        if item.has_schema_data:
+        if item.is_cited:
             overall += WEB_CITATION_BONUS
 
         overall = _apply_date_confidence(overall, item.date_confidence)

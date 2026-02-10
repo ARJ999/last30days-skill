@@ -96,7 +96,8 @@ Default engagement score for items without data: 20.
 
 ### Web (relevance-focused, no engagement)
 - **55%** relevance + **45%** recency - **10pt** source penalty
-- +5 for citation bonus
+- +5 citation bonus (items from deep research citations)
+- +3 extra_snippets bonus (richer content from annotations)
 
 ### Videos (balanced, no engagement)
 - **50%** relevance + **50%** recency

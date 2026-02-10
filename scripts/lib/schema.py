@@ -1,6 +1,6 @@
 """Data schemas for last30days skill."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
 
@@ -236,16 +236,14 @@ class WebItem:
     extra_snippets: List[str] = field(default_factory=list)
     date: Optional[str] = None
     date_confidence: str = "high"
-    has_schema_data: bool = False
-    schema_data: Optional[Dict[str, Any]] = None
-    deep_results: Optional[Dict[str, Any]] = None
+    is_cited: bool = False
     relevance: float = 0.5
     why_relevant: str = ""
     subs: SubScores = field(default_factory=SubScores)
     score: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
-        d = {
+        return {
             'id': self.id,
             'title': self.title,
             'url': self.url,
@@ -254,17 +252,12 @@ class WebItem:
             'extra_snippets': self.extra_snippets,
             'date': self.date,
             'date_confidence': self.date_confidence,
-            'has_schema_data': self.has_schema_data,
+            'is_cited': self.is_cited,
             'relevance': self.relevance,
             'why_relevant': self.why_relevant,
             'subs': self.subs.to_dict(),
             'score': self.score,
         }
-        if self.schema_data:
-            d['schema_data'] = self.schema_data
-        if self.deep_results:
-            d['deep_results'] = self.deep_results
-        return d
 
 
 @dataclass
@@ -347,8 +340,6 @@ class DataQuality:
     sources_available: List[str] = field(default_factory=list)
     sources_failed: List[str] = field(default_factory=list)
     has_summary: bool = False
-    has_infobox: bool = False
-    faq_count: int = 0
 
     @property
     def verified_dates_percent(self) -> float:
@@ -369,8 +360,6 @@ class DataQuality:
             'sources_available': self.sources_available,
             'sources_failed': self.sources_failed,
             'has_summary': self.has_summary,
-            'has_infobox': self.has_infobox,
-            'faq_count': self.faq_count,
         }
 
 
@@ -401,8 +390,6 @@ class Report:
     summary: Optional[str] = None
     summary_citations: List[Dict] = field(default_factory=list)
     summary_followups: List[str] = field(default_factory=list)
-    infobox: Optional[Dict] = None
-    faqs: List[Dict] = field(default_factory=list)
 
     # Errors per source
     reddit_error: Optional[str] = None
@@ -411,6 +398,7 @@ class Report:
     news_error: Optional[str] = None
     web_error: Optional[str] = None
     video_error: Optional[str] = None
+    discussions_error: Optional[str] = None
 
     # Cache info
     from_cache: bool = False
@@ -448,10 +436,6 @@ class Report:
             d['summary_citations'] = self.summary_citations
         if self.summary_followups:
             d['summary_followups'] = self.summary_followups
-        if self.infobox:
-            d['infobox'] = self.infobox
-        if self.faqs:
-            d['faqs'] = self.faqs
 
         # Errors
         if self.reddit_error:
@@ -466,6 +450,8 @@ class Report:
             d['web_error'] = self.web_error
         if self.video_error:
             d['video_error'] = self.video_error
+        if self.discussions_error:
+            d['discussions_error'] = self.discussions_error
 
         # Cache
         if self.from_cache:
@@ -501,9 +487,9 @@ class Report:
         def _build_data_quality(raw: Optional[Dict]) -> Optional[DataQuality]:
             if not raw:
                 return None
-            # Remove computed properties that aren't constructor args
-            clean = {k: v for k, v in raw.items()
-                     if k not in ('verified_dates_percent', 'verified_engagement_percent')}
+            # Only pass known DataQuality fields (handles old cached data with removed fields)
+            valid_keys = {f.name for f in fields(DataQuality)}
+            clean = {k: v for k, v in raw.items() if k in valid_keys}
             return DataQuality(**clean)
 
         # Reconstruct Reddit items
@@ -580,9 +566,7 @@ class Report:
                 snippet=w.get('snippet', ''),
                 extra_snippets=w.get('extra_snippets', []),
                 date=w.get('date'), date_confidence=w.get('date_confidence', 'high'),
-                has_schema_data=w.get('has_schema_data', False),
-                schema_data=w.get('schema_data'),
-                deep_results=w.get('deep_results'),
+                is_cited=w.get('is_cited', w.get('has_schema_data', False)),
                 relevance=w.get('relevance', 0.5),
                 why_relevant=w.get('why_relevant', ''),
                 subs=_build_subs(w.get('subs')),
@@ -638,14 +622,13 @@ class Report:
             summary=data.get('summary'),
             summary_citations=data.get('summary_citations', []),
             summary_followups=data.get('summary_followups', []),
-            infobox=data.get('infobox'),
-            faqs=data.get('faqs', []),
             reddit_error=data.get('reddit_error'),
             x_error=data.get('x_error'),
             hn_error=data.get('hn_error'),
             news_error=data.get('news_error'),
             web_error=data.get('web_error'),
             video_error=data.get('video_error'),
+            discussions_error=data.get('discussions_error'),
             from_cache=data.get('from_cache', False),
             cache_age_hours=data.get('cache_age_hours'),
             context_snippet_md=data.get('context_snippet_md', ''),
@@ -716,7 +699,7 @@ def compute_data_quality(report: Report) -> DataQuality:
         ("news", report.news, report.news_error),
         ("web", report.web, report.web_error),
         ("videos", report.videos, report.video_error),
-        ("discussions", report.discussions, None),
+        ("discussions", report.discussions, report.discussions_error),
     ]
 
     sources_available = []
@@ -735,6 +718,4 @@ def compute_data_quality(report: Report) -> DataQuality:
         sources_available=sources_available,
         sources_failed=sources_failed,
         has_summary=report.summary is not None,
-        has_infobox=report.infobox is not None,
-        faq_count=len(report.faqs),
     )

@@ -218,6 +218,7 @@ def parse_deep_research(response: Dict[str, Any]) -> Dict[str, Any]:
             "snippet": ann.get("snippet", "")[:300],
             "extra_snippets": [],
             "date": None,
+            "is_cited": True,
             "relevance": max(0.3, 1.0 - (len(result["web_items"]) / 20) * 0.7),
             "why_relevant": ann.get("snippet", "")[:150],
         })
@@ -302,10 +303,3 @@ def parse_web_results(response: Dict[str, Any]) -> List[Dict[str, Any]]:
     return items
 
 
-def parse_discussions(response: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Extract discussion-type items from web search response.
-
-    Not used in the Perplexity architecture (discussions have their own module).
-    Kept for backward compatibility with the orchestrator interface.
-    """
-    return []

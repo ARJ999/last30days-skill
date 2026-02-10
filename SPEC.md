@@ -195,7 +195,7 @@ Zero external Python dependencies. Uses only Python stdlib:
 - `urllib.request`, `urllib.parse`, `urllib.error` - HTTP
 - `json` - Serialization
 - `hashlib` - Cache keys
-- `concurrent.futures` - Parallel execution (up to 8 threads)
+- `concurrent.futures` - Parallel execution (up to 9 threads)
 - `dataclasses` - Schema definitions
 - `datetime`, `time` - Date handling
 - `pathlib` - File paths

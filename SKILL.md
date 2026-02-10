@@ -113,13 +113,18 @@ The script output will indicate the mode and include:
 - **HackerNews** with verified points and comments
 - **News Articles** from news sources with publication dates
 - **Web Results** with relevance-ranked pages
-- **Videos** from YouTube and other platforms (with creator, duration)
+- **Videos** from YouTube and other platforms (with creator, duration); in `--deep` mode, supplemented by sonar-deep-research for richer video discovery
 - **Forum Discussions** from Stack Overflow, Discourse, etc. (with engagement proxy from snippet richness)
 
 **Depth options** (passed through from user's command):
 - `--quick` -> Faster, fewer sources
 - (default) -> Balanced
-- `--deep` -> Comprehensive research with more pages
+- `--deep` -> Comprehensive research with more pages + video deep research via sonar-deep-research
+
+**Models used** (highest-tier, auto-selected):
+- Perplexity `sonar-pro-search` — structured search for Reddit, News, Web, Videos, Discussions
+- Perplexity `sonar-deep-research` — AI summary with citations + video deep discovery (`--deep`)
+- xAI `grok-4-1-fast-reasoning` — chain-of-thought reasoning for X/Twitter search (auto-selected, highest priority)
 
 ---
 

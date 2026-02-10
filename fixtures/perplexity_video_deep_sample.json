@@ -1,0 +1,44 @@
+{
+  "id": "gen-fixture-video-deep",
+  "model": "perplexity/sonar-deep-research",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "## Video Research: Test Topic (Last 30 Days)\n\nSeveral high-quality videos have been published about test topic in the past month:\n\n### Top Videos\n\n1. **Comprehensive Tutorial** — TechChannel published a 45-minute deep dive covering test topic from basics to advanced concepts [1].\n\n2. **Monthly Roundup** — DevNews released their January update summarizing all changes and updates [2].\n\n3. **Conference Talk** — A detailed conference presentation exploring real-world applications and performance benchmarks [3].\n\n### Community Highlights\n\nThe community has been actively creating content around test topic, with particular focus on practical tutorials and migration guides.",
+        "annotations": [
+          {
+            "type": "url_citation",
+            "url": "https://www.youtube.com/watch?v=deep_abc123",
+            "title": "Test Topic Deep Dive - Full Tutorial 2026",
+            "content": "Complete tutorial covering test topic from basics to advanced concepts"
+          },
+          {
+            "type": "url_citation",
+            "url": "https://www.youtube.com/watch?v=deep_def456",
+            "title": "Test Topic: What Changed This Month",
+            "content": "Monthly roundup of all changes and updates in test topic"
+          },
+          {
+            "type": "url_citation",
+            "url": "https://www.youtube.com/watch?v=deep_ghi789",
+            "title": "Test Topic at Scale - Conference Talk 2026",
+            "content": "Conference presentation on real-world applications and benchmarks"
+          }
+        ]
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "citations": [
+    "https://www.youtube.com/watch?v=deep_abc123",
+    "https://www.youtube.com/watch?v=deep_def456",
+    "https://www.youtube.com/watch?v=deep_ghi789"
+  ],
+  "usage": {
+    "prompt_tokens": 280,
+    "completion_tokens": 450,
+    "total_tokens": 730
+  }
+}

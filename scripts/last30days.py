@@ -173,7 +173,7 @@ def _search_perplexity_video_deep(
 ) -> tuple:
     """Deep research for video discovery via sonar-deep-research (deep mode only)."""
     if mock:
-        return load_fixture("perplexity_video_sample.json"), None
+        return load_fixture("perplexity_video_deep_sample.json"), None
     try:
         raw = perplexity_video.search_videos_deep(client, topic, from_date, to_date, depth=depth)
         return raw, None
@@ -297,9 +297,9 @@ def run_research(
         "discussions": None, "deep": None,
     }
 
-    # Phase 1: Parallel search (up to 8 threads)
+    # Phase 1: Parallel search (up to 9 threads: 7 sources + deep research + video deep)
     futures = {}
-    with ThreadPoolExecutor(max_workers=8) as executor:
+    with ThreadPoolExecutor(max_workers=9) as executor:
         if run_web:
             if progress:
                 progress.start_web()

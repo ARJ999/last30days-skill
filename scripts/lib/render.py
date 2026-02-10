@@ -111,10 +111,6 @@ def render_compact(report: schema.Report, limit: int = 15, missing_keys: str = "
             lines.append(f"- **Sources Failed:** {', '.join(dq.sources_failed)}")
         if dq.has_summary:
             lines.append("- **AI Summary:** Available")
-        if dq.has_infobox:
-            lines.append("- **Knowledge Panel:** Available")
-        if dq.faq_count > 0:
-            lines.append(f"- **FAQ Entries:** {dq.faq_count}")
         lines.append("")
 
     # AI Summary (from Perplexity Deep Research)
@@ -137,32 +133,6 @@ def render_compact(report: schema.Report, limit: int = 15, missing_keys: str = "
             for q in report.summary_followups[:5]:
                 lines.append(f"  - {q}")
         lines.append("")
-
-    # Infobox (Knowledge Panel)
-    if report.infobox:
-        ib = report.infobox
-        lines.append("### Knowledge Panel")
-        lines.append("")
-        if ib.get("title"):
-            lines.append(f"**{ib['title']}**")
-        if ib.get("description"):
-            lines.append(ib["description"])
-        if ib.get("long_description"):
-            lines.append(ib["long_description"][:300])
-        if ib.get("url"):
-            lines.append(f"Source: {ib['url']}")
-        lines.append("")
-
-    # FAQ
-    if report.faqs:
-        lines.append("### Frequently Asked Questions")
-        lines.append("")
-        for faq in report.faqs[:5]:
-            lines.append(f"**Q: {faq.get('question', '')}**")
-            lines.append(f"A: {faq.get('answer', '')}")
-            if faq.get("url"):
-                lines.append(f"Source: {faq['url']}")
-            lines.append("")
 
     # Reddit items
     _render_reddit_section(lines, report, limit)
@@ -331,9 +301,9 @@ def _render_web_section(lines: list, report: schema.Report, limit: int):
         lines.append("")
         for item in report.web[:limit]:
             date_str = f" ({item.date})" if item.date else " (date unknown)"
-            schema_tag = " [schema]" if item.has_schema_data else ""
+            cited_tag = " [cited]" if item.is_cited else ""
 
-            lines.append(f"**{item.id}** (score:{item.score}) {item.source_domain}{date_str}{schema_tag}")
+            lines.append(f"**{item.id}** (score:{item.score}) {item.source_domain}{date_str}{cited_tag}")
             lines.append(f"  {item.title}")
             lines.append(f"  {item.url}")
             snippet = item.snippet[:150] + "..." if len(item.snippet) > 150 else item.snippet
@@ -342,59 +312,6 @@ def _render_web_section(lines: list, report: schema.Report, limit: int):
             if item.extra_snippets:
                 for es in item.extra_snippets[:2]:
                     lines.append(f"  > {es[:120]}")
-
-            # Schema-enriched data (ratings, reviews, products, etc.)
-            if item.schema_data:
-                sd = item.schema_data
-                parts = []
-                if sd.get("rating"):
-                    r = sd["rating"]
-                    val = r.get("value", "?")
-                    best = r.get("best", "5")
-                    count = r.get("review_count")
-                    count_str = f" ({count} reviews)" if count else ""
-                    parts.append(f"Rating: {val}/{best}{count_str}")
-                if sd.get("article"):
-                    art = sd["article"]
-                    if art.get("authors"):
-                        parts.append(f"By: {', '.join(art['authors'][:2])}")
-                    if art.get("publisher"):
-                        parts.append(f"Publisher: {art['publisher']}")
-                if sd.get("product"):
-                    prod = sd["product"]
-                    if prod.get("name"):
-                        parts.append(f"Product: {prod['name']}")
-                    if prod.get("rating"):
-                        pr = prod["rating"]
-                        parts.append(f"Product rating: {pr.get('value', '?')}/{pr.get('best', '5')}")
-                if sd.get("review"):
-                    rev = sd["review"]
-                    if rev.get("name"):
-                        parts.append(f"Review: {rev['name'][:60]}")
-                if sd.get("book"):
-                    bk = sd["book"]
-                    if bk.get("title"):
-                        parts.append(f"Book: {bk['title'][:60]}")
-                if sd.get("recipe"):
-                    rec = sd["recipe"]
-                    if rec.get("name"):
-                        parts.append(f"Recipe: {rec['name'][:60]}")
-                if sd.get("qa"):
-                    qa = sd["qa"]
-                    if qa.get("question"):
-                        parts.append(f"Q: {qa['question'][:60]}")
-                if parts:
-                    lines.append(f"  [{' | '.join(parts)}]")
-
-            # Deep results (sitelinks, nested content)
-            if item.deep_results:
-                dr = item.deep_results
-                if dr.get("buttons"):
-                    btn_titles = [b["title"] for b in dr["buttons"][:4]]
-                    lines.append(f"  Sitelinks: {' | '.join(btn_titles)}")
-                if dr.get("news"):
-                    for n in dr["news"][:2]:
-                        lines.append(f"  > News: {n['title'][:80]}")
 
             lines.append("")
 
@@ -504,17 +421,6 @@ def render_full_report(report: schema.Report) -> str:
         lines.append(report.summary)
         lines.append("")
 
-    # Infobox
-    if report.infobox:
-        ib = report.infobox
-        lines.append("## Knowledge Panel")
-        lines.append("")
-        if ib.get("title"):
-            lines.append(f"**{ib['title']}**")
-        if ib.get("description"):
-            lines.append(ib["description"])
-        lines.append("")
-
     # Reddit
     if report.reddit:
         lines.append("## Reddit Threads")
@@ -597,20 +503,8 @@ def render_full_report(report: schema.Report) -> str:
             lines.append(f"- **URL:** {item.url}")
             lines.append(f"- **Date:** {item.date or 'Unknown'}")
             lines.append(f"- **Score:** {item.score}/100")
-            if item.has_schema_data:
-                lines.append("- **Schema Data:** Available")
-            if item.schema_data:
-                sd = item.schema_data
-                if sd.get("rating"):
-                    r = sd["rating"]
-                    lines.append(f"- **Rating:** {r.get('value', '?')}/{r.get('best', '5')}")
-                if sd.get("article") and sd["article"].get("authors"):
-                    lines.append(f"- **Authors:** {', '.join(sd['article']['authors'])}")
-                if sd.get("product") and sd["product"].get("name"):
-                    lines.append(f"- **Product:** {sd['product']['name']}")
-            if item.deep_results and item.deep_results.get("buttons"):
-                btns = [b["title"] for b in item.deep_results["buttons"][:4]]
-                lines.append(f"- **Sitelinks:** {', '.join(btns)}")
+            if item.is_cited:
+                lines.append("- **Citation:** From deep research")
             if item.snippet:
                 lines.append("")
                 lines.append(f"> {item.snippet}")
@@ -645,15 +539,6 @@ def render_full_report(report: schema.Report) -> str:
             if item.snippet:
                 lines.append("")
                 lines.append(f"> {item.snippet}")
-            lines.append("")
-
-    # FAQ
-    if report.faqs:
-        lines.append("## Frequently Asked Questions")
-        lines.append("")
-        for faq in report.faqs:
-            lines.append(f"**Q: {faq.get('question', '')}**")
-            lines.append(f"A: {faq.get('answer', '')}")
             lines.append("")
 
     return "\n".join(lines)

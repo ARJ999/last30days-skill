@@ -76,7 +76,7 @@ Zero external Python dependencies. Uses only Python stdlib (`urllib`, `json`, `h
 - **Discussions** — `sonar-pro-search` with `search_domain_filter` targeting Stack Overflow, Discourse, etc.
 - **AI Summary** — `sonar-deep-research` for comprehensive AI summary with inline web citations
 
-Perplexity features used: `search_domain_filter` (per-source site scoping), `search_recency_filter` (date range), `search_after_date_filter`/`search_before_date_filter` (ISO 8601 date bounds), `search_context_size` (high for deep research, low for focused searches).
+Perplexity features used: `search_domain_filter` (per-source site scoping), `search_recency_filter` (date range), `search_after_date_filter`/`search_before_date_filter` (MM/DD/YYYY date bounds), `search_context_size` ("high" for sonar-pro-search, not used for deep-research).
 
 **xAI API** (Responses API) powers X/Twitter search:
 - Uses `x_search` agent tool with native `from_date`/`to_date` date filtering (ISO 8601)
@@ -136,7 +136,7 @@ Each report includes transparency metrics:
 - Total items and sources used/failed
 - Verified dates and engagement percentages
 - Average item recency in days
-- AI Summary, Knowledge Panel, and FAQ availability
+- AI Summary availability
 
 ## CLI Reference
 
@@ -224,12 +224,11 @@ last30days-skill/
 │       ├── models.py           # xAI model auto-selection
 │       ├── schema.py           # Dataclass schemas (7 item types + Report)
 │       ├── openrouter_client.py # OpenRouter API client (auth, rate limit, errors)
-│       ├── perplexity_web.py   # Web search via sonar-pro-search
+│       ├── perplexity_web.py   # Web search (sonar-pro-search) + deep research (sonar-deep-research)
 │       ├── perplexity_reddit.py # Reddit search via search_domain_filter
 │       ├── perplexity_news.py  # News search with recency filter
 │       ├── perplexity_video.py # Video search via search_domain_filter
 │       ├── perplexity_discussions.py # Discussions search via search_domain_filter
-│       ├── perplexity_deep.py  # Deep research via sonar-deep-research
 │       ├── xai_x.py            # xAI Responses API + x_search tool
 │       ├── hn.py               # HackerNews Algolia API
 │       ├── reddit_enrich.py    # Reddit thread JSON enrichment (score, ratio, comments, insights)
@@ -239,11 +238,11 @@ last30days-skill/
 │       ├── render.py           # Output rendering (compact/md/json/context)
 │       └── ui.py               # Terminal progress display
 ├── fixtures/                   # Mock data for --mock mode
-│   ├── perplexity_web_sample.json
+│   ├── perplexity_web_items_sample.json
 │   ├── perplexity_reddit_sample.json
 │   ├── perplexity_news_sample.json
 │   ├── perplexity_video_sample.json
-│   ├── perplexity_deep_sample.json
+│   ├── perplexity_deep_research_sample.json
 │   ├── perplexity_discussions_sample.json
 │   ├── xai_sample.json
 │   ├── hn_sample.json
@@ -258,7 +257,7 @@ last30days-skill/
 │   ├── test_normalize.py
 │   └── test_render.py
 └── plans/                      # Architecture documents
-    └── revamp-perplexity-xai-architecture.md
+    └── revamp-brave-xai-architecture.md
 ```
 
 ## Dependencies

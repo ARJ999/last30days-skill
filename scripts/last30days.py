@@ -452,8 +452,6 @@ def run_research(
         "web_items": web_items_raw,
         "video_items": video_items_raw,
         "discussion_items": discussion_items_raw,
-        "faq_items": [],
-        "infobox": None,
         "summary_data": summary_data,
         "raw_reddit_enriched": raw_reddit_enriched,
     }
@@ -683,14 +681,13 @@ def main():
     report.news_error = research["errors"]["news"]
     report.web_error = research["errors"]["web"]
     report.video_error = research["errors"]["video"]
+    report.discussions_error = research["errors"]["discussions"]
 
     # Attach AI summary from deep research
     if research["summary_data"]:
         report.summary = research["summary_data"].get("summary")
         report.summary_citations = research["summary_data"].get("citations", [])
         report.summary_followups = research["summary_data"].get("followups", [])
-    report.infobox = research["infobox"]
-    report.faqs = research["faq_items"]
 
     # Compute data quality
     report.data_quality = schema.compute_data_quality(report)

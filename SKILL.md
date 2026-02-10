@@ -108,7 +108,6 @@ The script will automatically:
 The script output will indicate the mode and include:
 - **Data Quality Metrics** (total items, verified dates %, verified engagement %, avg recency days, sources used/failed)
 - **AI Summary** (if available from Perplexity Deep Research, with inline citations and follow-up questions)
-- **Knowledge Panel** (infobox with title, description, attributes, profiles)
 - **Reddit Threads** with verified engagement (upvotes, upvote_ratio, comments, top comment insights)
 - **X Posts** with full engagement (likes, reposts, replies, quotes, views, bookmarks, has_media flag)
 - **HackerNews** with verified points and comments
@@ -226,7 +225,7 @@ Data Quality: {n} items | {n}% verified dates | {n}% verified engagement | avg {
 |- Web: {n} pages
 |- Videos: {n} videos
 |- Discussions: {n} forums
-|- AI Summary: Available | Knowledge Panel: Available
+|- AI Summary: Available
 |- Top voices: r/{sub1}, r/{sub2} | @{handle1}, @{handle2}
 ```
 

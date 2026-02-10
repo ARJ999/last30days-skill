@@ -91,7 +91,7 @@ Perplexity features used: `search_domain_filter` (per-source site scoping), `sea
 ### Processing Pipeline
 
 ```
-env.py → models.py → parallel search (8 threads) → reddit_enrich.py
+env.py → models.py → parallel search (9 threads) → reddit_enrich.py
     → normalize.py → score.py → dedupe.py → render.py
 ```
 
@@ -266,7 +266,7 @@ Zero external Python dependencies. Uses only Python stdlib:
 - `urllib.request`, `urllib.parse`, `urllib.error` — HTTP
 - `json` — Serialization
 - `hashlib` — Cache keys
-- `concurrent.futures` — Parallel execution (up to 8 threads)
+- `concurrent.futures` — Parallel execution (up to 9 threads)
 - `dataclasses` — Schema definitions
 - `datetime`, `time` — Date handling
 - `pathlib` — File paths

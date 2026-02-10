@@ -52,8 +52,8 @@ Common patterns:
 
 The skill works in four modes based on available API keys:
 
-1. **Full Mode** (BRAVE_API_KEY + XAI_API_KEY): All 7 sources - Reddit, X, HN, News, Web, Videos, Discussions + AI Summary
-2. **Brave Mode** (BRAVE_API_KEY only): 6 sources - Reddit, HN, News, Web, Videos, Discussions (no X)
+1. **Full Mode** (OPENROUTER_API_KEY + XAI_API_KEY): All 7 sources - Reddit, X, HN, News, Web, Videos, Discussions + AI Summary
+2. **Perplexity Mode** (OPENROUTER_API_KEY only): 6 sources - Reddit, HN, News, Web, Videos, Discussions (no X)
 3. **X Mode** (XAI_API_KEY only): X + HN only
 4. **HN-Only Mode** (no keys): HackerNews only - still useful, but limited
 
@@ -69,8 +69,9 @@ cat > ~/.config/last30days/.env << 'ENVEOF'
 # last30days API Configuration
 # Both keys are optional - skill works with HN-only fallback
 
-# For Reddit, News, Web, Videos, Discussions + AI Summary (Brave Search Pro Data AI)
-BRAVE_API_KEY=
+# For Reddit, News, Web, Videos, Discussions + AI Summary (Perplexity via OpenRouter)
+# Get your key at https://openrouter.ai/keys
+OPENROUTER_API_KEY=
 
 # For X/Twitter research (uses xAI's x_search tool)
 XAI_API_KEY=
@@ -96,9 +97,9 @@ python3 ~/.claude/skills/last30days/scripts/last30days.py "$ARGUMENTS" --emit=co
 
 The script will automatically:
 - Detect available API keys
-- Search up to 7 sources in parallel (Reddit via Brave, X via xAI, HN via Algolia, News/Web/Videos/Discussions via Brave)
+- Search up to 7 sources in parallel (Reddit via Perplexity, X via xAI, HN via Algolia, News/Web/Videos/Discussions via Perplexity)
 - Enrich Reddit threads with real engagement data
-- Fetch AI summary via Brave Summarizer (free, not billed separately)
+- Fetch AI summary via Perplexity Deep Research
 - Normalize, score, deduplicate, and rank all results
 - Show a promo banner if keys are missing (this is intentional marketing)
 
@@ -106,14 +107,13 @@ The script will automatically:
 
 The script output will indicate the mode and include:
 - **Data Quality Metrics** (total items, verified dates %, verified engagement %, avg recency days, sources used/failed)
-- **AI Summary** (if available from Brave Summarizer, with inline citations and follow-up questions)
+- **AI Summary** (if available from Perplexity Deep Research, with inline citations and follow-up questions)
 - **Knowledge Panel** (infobox with title, description, attributes, profiles)
-- **FAQ** (frequently asked questions with sourced answers from Brave)
 - **Reddit Threads** with verified engagement (upvotes, upvote_ratio, comments, top comment insights)
 - **X Posts** with full engagement (likes, reposts, replies, quotes, views, bookmarks, has_media flag)
 - **HackerNews** with verified points and comments
 - **News Articles** from news sources with publication dates
-- **Web Results** with schema-enriched data (ratings, reviews, products, articles, books, recipes, Q&A) and deep results (sitelinks, nested news)
+- **Web Results** with relevance-ranked pages
 - **Videos** from YouTube and other platforms (with creator, duration)
 - **Forum Discussions** from Stack Overflow, Discourse, etc. (with engagement proxy from snippet richness)
 
@@ -214,7 +214,7 @@ KEY PATTERNS I'll use:
 
 **THEN - Stats (right before invitation):**
 
-For **full mode** (both BRAVE + XAI keys):
+For **full mode** (both OPENROUTER + XAI keys):
 ```
 ---
 All agents reported back!
@@ -223,14 +223,14 @@ Data Quality: {n} items | {n}% verified dates | {n}% verified engagement | avg {
 |- X: {n} posts | {sum} likes | {sum} reposts | {sum} views
 |- HN: {n} stories | {sum} points (engagement verified)
 |- News: {n} articles
-|- Web: {n} pages ({n} with schema data, {n} with deep results)
+|- Web: {n} pages
 |- Videos: {n} videos
 |- Discussions: {n} forums
-|- AI Summary: Available | Knowledge Panel: Available | FAQ: {n} entries
+|- AI Summary: Available | Knowledge Panel: Available
 |- Top voices: r/{sub1}, r/{sub2} | @{handle1}, @{handle2}
 ```
 
-For **brave mode** (BRAVE_API_KEY only):
+For **perplexity mode** (OPENROUTER_API_KEY only):
 ```
 ---
 Research complete!
@@ -250,7 +250,7 @@ Research complete!
 |- HN: {n} stories | {sum} points
 
 Want better results? Add API keys to ~/.config/last30days/.env
-- BRAVE_API_KEY -> Reddit, News, Web, Videos, Discussions
+- OPENROUTER_API_KEY -> Reddit, News, Web, Videos, Discussions
 - XAI_API_KEY -> X/Twitter (real likes & reposts)
 ```
 

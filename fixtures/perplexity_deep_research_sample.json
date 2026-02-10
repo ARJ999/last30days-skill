@@ -1,0 +1,51 @@
+{
+  "id": "gen-fixture-deep-research",
+  "model": "perplexity/sonar-deep-research",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "## Test Topic: Recent Developments (Last 30 Days)\n\nTest topic has seen significant developments over the past month. Here are the key highlights:\n\n### Key Updates\n\n1. **Major Version Release**: A new version was released on January 20th with substantial improvements to performance and developer experience [1].\n\n2. **Community Growth**: The community around test topic has grown significantly, with active discussions on multiple platforms [2].\n\n3. **Enterprise Adoption**: Several large companies have announced adoption of test topic for production workloads [3].\n\n### Technical Improvements\n\n- Performance improvements of up to 40% in common benchmarks\n- New API features for better integration\n- Improved documentation and tutorials\n\n### Industry Impact\n\nTest topic is increasingly being recognized as a leading solution in its category, with analysts predicting continued growth throughout 2026 [4].",
+        "annotations": [
+          {
+            "type": "url_citation",
+            "url": "https://example.com/test-topic-release",
+            "title": "Test Topic v3.0 Release Notes",
+            "content": "Major version release with performance improvements"
+          },
+          {
+            "type": "url_citation",
+            "url": "https://community.example.com/test-topic-growth",
+            "title": "Test Topic Community Milestones",
+            "content": "Community has grown to over 100k active members"
+          },
+          {
+            "type": "url_citation",
+            "url": "https://enterprise.example.com/case-study",
+            "title": "Enterprise Case Study: Test Topic at Scale",
+            "content": "How major companies are using test topic in production"
+          },
+          {
+            "type": "url_citation",
+            "url": "https://analyst.example.com/2026-predictions",
+            "title": "Tech Predictions for 2026",
+            "content": "Analysts predict continued growth for test topic"
+          }
+        ]
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "citations": [
+    "https://example.com/test-topic-release",
+    "https://community.example.com/test-topic-growth",
+    "https://enterprise.example.com/case-study",
+    "https://analyst.example.com/2026-predictions"
+  ],
+  "usage": {
+    "prompt_tokens": 250,
+    "completion_tokens": 600,
+    "total_tokens": 850
+  }
+}

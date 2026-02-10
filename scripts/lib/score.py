@@ -19,10 +19,8 @@ NEWS_WEIGHT_RECENCY = 0.55
 WEB_WEIGHT_RELEVANCE = 0.55
 WEB_WEIGHT_RECENCY = 0.45
 WEB_SOURCE_PENALTY = 10  # Points deducted for lacking engagement
-WEB_SCHEMA_BONUS = 5     # Bonus for schema-enriched results
-WEB_RICH_SCHEMA_BONUS = 3  # Additional bonus for extracted schema data (rating, review, etc.)
-WEB_DEEP_RESULTS_BONUS = 3  # Bonus for deep results (sitelinks, nested content)
 WEB_EXTRA_SNIPPETS_BONUS = 3  # Bonus for having extra snippets
+WEB_CITATION_BONUS = 5   # Bonus for items sourced from deep research citations
 
 # Video weights (no engagement, balanced)
 VIDEO_WEIGHT_RELEVANCE = 0.50
@@ -257,7 +255,7 @@ def score_web_items(items: List[schema.WebItem]) -> List[schema.WebItem]:
 
     Weights: 55% relevance + 45% recency - 10pt penalty + bonuses
     Web items lack engagement data, so they rank below Reddit/X/HN by default.
-    Schema data and extra snippets provide small bonuses for richer results.
+    Extra snippets and citation provenance provide small bonuses for richer results.
     """
     if not items:
         return items
@@ -280,21 +278,13 @@ def score_web_items(items: List[schema.WebItem]) -> List[schema.WebItem]:
         # Source penalty (no engagement data)
         overall -= WEB_SOURCE_PENALTY
 
-        # Schema data bonus (structured data = higher quality page)
-        if item.has_schema_data:
-            overall += WEB_SCHEMA_BONUS
-
-        # Rich schema data bonus (rating, review, product, etc.)
-        if item.schema_data:
-            overall += WEB_RICH_SCHEMA_BONUS
-
-        # Deep results bonus (sitelinks, nested news/videos)
-        if item.deep_results:
-            overall += WEB_DEEP_RESULTS_BONUS
-
         # Extra snippets bonus (more content = more relevant)
         if item.extra_snippets:
             overall += WEB_EXTRA_SNIPPETS_BONUS
+
+        # Citation bonus (items from deep research citations are higher quality)
+        if item.has_schema_data:
+            overall += WEB_CITATION_BONUS
 
         overall = _apply_date_confidence(overall, item.date_confidence)
         item.score = max(0, min(100, int(overall)))

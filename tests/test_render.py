@@ -54,7 +54,7 @@ class TestRenderCompact(unittest.TestCase):
         self.assertIn("Test Thread", result)
         self.assertIn("r/test", result)
 
-    def test_shows_coverage_tip_for_reddit_only(self):
+    def test_shows_coverage_tip_for_missing_x(self):
         report = schema.Report(
             topic="test",
             range_from="2026-01-01",
@@ -63,10 +63,20 @@ class TestRenderCompact(unittest.TestCase):
             mode="reddit-only",
         )
 
-        # Pass missing_keys='x' to trigger the tip
         result = render.render_compact(report, missing_keys='x')
-
         self.assertIn("XAI_API_KEY", result)
+
+    def test_shows_coverage_tip_for_missing_openrouter(self):
+        report = schema.Report(
+            topic="test",
+            range_from="2026-01-01",
+            range_to="2026-01-31",
+            generated_at="2026-01-31T12:00:00Z",
+            mode="x-only",
+        )
+
+        result = render.render_compact(report, missing_keys='openrouter')
+        self.assertIn("OPENROUTER_API_KEY", result)
 
 
 class TestRenderContextSnippet(unittest.TestCase):

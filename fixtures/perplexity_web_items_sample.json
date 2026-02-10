@@ -1,0 +1,38 @@
+{
+  "id": "gen-fixture-web-items",
+  "model": "perplexity/sonar-pro-search",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\n  \"items\": [\n    {\n      \"title\": \"Understanding Test Topic: A Complete Guide\",\n      \"url\": \"https://example.com/test-topic-guide\",\n      \"date\": \"2026-01-20\",\n      \"snippet\": \"A comprehensive guide to test topic covering all aspects of implementation and best practices.\",\n      \"relevance\": 0.90,\n      \"why_relevant\": \"Comprehensive authoritative guide on the topic\"\n    },\n    {\n      \"title\": \"Test Topic Tutorial - Getting Started\",\n      \"url\": \"https://docs.example.org/test-topic-tutorial\",\n      \"date\": \"2026-01-16\",\n      \"snippet\": \"Step-by-step tutorial for getting started with test topic, including setup and configuration.\",\n      \"relevance\": 0.85,\n      \"why_relevant\": \"Official tutorial with practical setup instructions\"\n    },\n    {\n      \"title\": \"Test Topic vs Alternatives: 2026 Comparison\",\n      \"url\": \"https://blog.example.com/test-topic-comparison-2026\",\n      \"date\": \"2026-01-08\",\n      \"snippet\": \"Detailed comparison of test topic with alternatives, benchmarks and real-world performance.\",\n      \"relevance\": 0.78,\n      \"why_relevant\": \"Recent comparison with benchmarks and analysis\"\n    }\n  ]\n}",
+        "annotations": [
+          {
+            "type": "url_citation",
+            "url": "https://example.com/test-topic-guide",
+            "title": "Understanding Test Topic: A Complete Guide",
+            "content": "A comprehensive guide to test topic"
+          },
+          {
+            "type": "url_citation",
+            "url": "https://docs.example.org/test-topic-tutorial",
+            "title": "Test Topic Tutorial - Getting Started",
+            "content": "Step-by-step tutorial for getting started"
+          }
+        ]
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "citations": [
+    "https://example.com/test-topic-guide",
+    "https://docs.example.org/test-topic-tutorial",
+    "https://blog.example.com/test-topic-comparison-2026"
+  ],
+  "usage": {
+    "prompt_tokens": 200,
+    "completion_tokens": 340,
+    "total_tokens": 540
+  }
+}

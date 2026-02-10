@@ -68,7 +68,7 @@ def render_compact(report: schema.Report, limit: int = 15, missing_keys: str = "
         lines.append("")
         lines.append("---")
         lines.append("**Want better results?** Add API keys to unlock more sources:")
-        lines.append("- `BRAVE_API_KEY` -> Reddit, News, Web, Videos, Discussions")
+        lines.append("- `OPENROUTER_API_KEY` -> Reddit, News, Web, Videos, Discussions (via Perplexity)")
         lines.append("- `XAI_API_KEY` -> X/Twitter posts with real engagement")
         lines.append("- Edit `~/.config/last30days/.env` to add keys")
         lines.append("---")
@@ -87,14 +87,14 @@ def render_compact(report: schema.Report, limit: int = 15, missing_keys: str = "
     lines.append("")
 
     # Coverage tip for partial coverage
-    if missing_keys == "brave":
-        lines.append("*Tip: Add BRAVE_API_KEY for Reddit, News, Web, Videos, and Discussions data.*")
+    if missing_keys == "openrouter":
+        lines.append("*Tip: Add OPENROUTER_API_KEY for Reddit, News, Web, Videos, and Discussions data (via Perplexity).*")
         lines.append("")
     elif missing_keys == "x":
         lines.append("*Tip: Add XAI_API_KEY for X/Twitter data with real likes & reposts.*")
         lines.append("")
     elif missing_keys == "both":
-        lines.append("*Tip: Add BRAVE_API_KEY and XAI_API_KEY for full source coverage.*")
+        lines.append("*Tip: Add OPENROUTER_API_KEY and XAI_API_KEY for full source coverage.*")
         lines.append("")
 
     # Data quality metrics
@@ -117,7 +117,7 @@ def render_compact(report: schema.Report, limit: int = 15, missing_keys: str = "
             lines.append(f"- **FAQ Entries:** {dq.faq_count}")
         lines.append("")
 
-    # AI Summary (from Brave Summarizer)
+    # AI Summary (from Perplexity Deep Research)
     if report.summary:
         lines.append("### AI Summary")
         lines.append("")
@@ -661,10 +661,12 @@ def render_full_report(report: schema.Report) -> str:
 
 def write_outputs(
     report: schema.Report,
-    raw_brave_web: Optional[dict] = None,
-    raw_brave_reddit: Optional[dict] = None,
-    raw_brave_news: Optional[dict] = None,
-    raw_brave_video: Optional[dict] = None,
+    raw_perplexity_web: Optional[dict] = None,
+    raw_perplexity_deep: Optional[dict] = None,
+    raw_perplexity_reddit: Optional[dict] = None,
+    raw_perplexity_news: Optional[dict] = None,
+    raw_perplexity_video: Optional[dict] = None,
+    raw_perplexity_discussions: Optional[dict] = None,
     raw_xai: Optional[dict] = None,
     raw_hn: Optional[dict] = None,
     raw_reddit_enriched: Optional[list] = None,
@@ -686,10 +688,12 @@ def write_outputs(
 
     # Raw responses
     raw_files = {
-        "raw_brave_web.json": raw_brave_web,
-        "raw_brave_reddit.json": raw_brave_reddit,
-        "raw_brave_news.json": raw_brave_news,
-        "raw_brave_video.json": raw_brave_video,
+        "raw_perplexity_web.json": raw_perplexity_web,
+        "raw_perplexity_deep.json": raw_perplexity_deep,
+        "raw_perplexity_reddit.json": raw_perplexity_reddit,
+        "raw_perplexity_news.json": raw_perplexity_news,
+        "raw_perplexity_video.json": raw_perplexity_video,
+        "raw_perplexity_discussions.json": raw_perplexity_discussions,
         "raw_xai.json": raw_xai,
         "raw_hn.json": raw_hn,
     }

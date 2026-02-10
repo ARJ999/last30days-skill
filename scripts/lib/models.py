@@ -1,6 +1,6 @@
 """Model selection for last30days skill (xAI only).
 
-Brave Search API requires no model selection - it is a direct search API.
+Perplexity models are accessed via OpenRouter and don't require model selection here.
 Only xAI (for X/Twitter search via grok models) needs model selection.
 """
 

@@ -72,9 +72,9 @@ Zero external Python dependencies. Uses only Python stdlib (`urllib`, `json`, `h
 - **Reddit** — `sonar-pro-search` with `search_domain_filter=["reddit.com"]`, enriched with real thread engagement (score, upvote_ratio, num_comments, top comment excerpts, comment insights)
 - **News** — `sonar-pro-search` with `search_recency_filter` for time-sensitive results
 - **Web** — `sonar-pro-search` for general web search with citations and extra snippets
-- **Videos** — `sonar-pro-search` with `search_domain_filter` targeting video platforms
+- **Videos** — `sonar-pro-search` with `search_domain_filter` targeting video platforms; in `--deep` mode, also uses `sonar-deep-research` for comprehensive video discovery
 - **Discussions** — `sonar-pro-search` with `search_domain_filter` targeting Stack Overflow, Discourse, etc.
-- **AI Summary** — `sonar-deep-research` for comprehensive AI summary with inline web citations
+- **AI Summary** — `sonar-deep-research` for comprehensive AI summary with inline web citations and follow-up questions
 
 Perplexity features used: `search_domain_filter` (per-source site scoping), `search_recency_filter` (date range), `search_after_date_filter`/`search_before_date_filter` (MM/DD/YYYY date bounds), `search_context_size` ("high" for sonar-pro-search, not used for deep-research).
 

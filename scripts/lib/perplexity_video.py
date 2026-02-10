@@ -1,4 +1,9 @@
-"""Video search via Perplexity sonar-pro-search through OpenRouter."""
+"""Video search via Perplexity sonar-pro-search + sonar-deep-research through OpenRouter.
+
+Two complementary calls:
+- sonar-pro-search: Structured video items with URLs, creators, dates
+- sonar-deep-research (deep mode): Comprehensive video discovery with richer context
+"""
 
 import json
 import re
@@ -41,6 +46,19 @@ Rules:
 - creator is the channel/uploader name
 - Include educational, tutorial, review, and informative content
 - Prefer videos with high production quality and substantive content"""
+
+# Deep research prompt for comprehensive video discovery
+VIDEO_DEEP_RESEARCH_PROMPT = """Research the most important and talked-about videos about: {topic}
+
+Search YouTube, Vimeo, and video platforms for the best video content from the last 30 days.
+Identify:
+1. The most-watched and most-shared videos on this topic
+2. Notable creator/channel coverage (tutorials, deep-dives, reviews, explainers)
+3. Conference talks, demos, or official announcements in video form
+4. Community-recommended video resources
+
+For each video found, provide the full URL, creator/channel name, and why it matters.
+Include inline source citations [1], [2], etc."""
 
 
 def _log(msg: str):
@@ -96,6 +114,90 @@ def search_videos(
     )
 
     return response
+
+
+def search_videos_deep(
+    client: openrouter_client.OpenRouterClient,
+    topic: str,
+    from_date: str,
+    to_date: str,
+    depth: str = "default",
+    mock_response: Optional[Dict] = None,
+) -> Dict[str, Any]:
+    """Run deep research for video discovery via sonar-deep-research.
+
+    Only used in deep mode for richer video discovery with comprehensive context.
+
+    Returns:
+        Full OpenRouter response with video-focused research synthesis.
+    """
+    if mock_response is not None:
+        return mock_response
+
+    after_date = openrouter_client.format_date_filter(from_date)
+    before_date = openrouter_client.format_date_filter(to_date)
+
+    timeout = 120 if depth == "quick" else 180 if depth == "default" else 300
+
+    response = client.chat(
+        model=openrouter_client.SONAR_DEEP_RESEARCH,
+        messages=[
+            {"role": "user", "content": VIDEO_DEEP_RESEARCH_PROMPT.format(topic=topic)},
+        ],
+        max_tokens=4096,
+        temperature=0.3,
+        search_domain_filter=["youtube.com", "vimeo.com", "dailymotion.com"],
+        search_recency_filter="month",
+        search_after_date_filter=after_date,
+        search_before_date_filter=before_date,
+        return_related_questions=False,
+        timeout=timeout,
+    )
+
+    return response
+
+
+def parse_video_deep_research(response: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Parse deep research response to extract supplementary video items from citations.
+
+    Returns:
+        List of video item dicts discovered via deep research citations.
+    """
+    items = []
+
+    annotations = openrouter_client.extract_annotations(response)
+    citation_urls = openrouter_client.extract_citations(response)
+
+    video_domains = {"youtube.com", "youtu.be", "vimeo.com", "dailymotion.com"}
+
+    # Build items from annotations (richer) or fallback to citation URLs
+    sources = annotations if annotations else [{"url": u, "title": "", "snippet": ""} for u in citation_urls]
+    seen_urls = set()
+
+    for ann in sources:
+        url = ann.get("url", "")
+        domain = _extract_domain(url)
+        if not url or url in seen_urls:
+            continue
+        if not any(d in domain for d in video_domains):
+            continue
+        seen_urls.add(url)
+
+        items.append({
+            "id": f"V{len(items)+1}",
+            "title": ann.get("title", "")[:200],
+            "url": url,
+            "source_domain": domain,
+            "creator": None,
+            "thumbnail_url": None,
+            "duration": None,
+            "snippet": ann.get("snippet", "")[:300],
+            "date": None,
+            "relevance": max(0.3, 1.0 - (len(items) / 15) * 0.7),
+            "why_relevant": ann.get("snippet", "")[:150],
+        })
+
+    return items
 
 
 def parse_video_results(response: Dict[str, Any]) -> List[Dict[str, Any]]:

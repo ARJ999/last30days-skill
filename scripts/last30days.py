@@ -163,6 +163,26 @@ def _search_perplexity_video(
         return None, f"{type(e).__name__}: {e}"
 
 
+def _search_perplexity_video_deep(
+    client: openrouter_client.OpenRouterClient,
+    topic: str,
+    from_date: str,
+    to_date: str,
+    depth: str,
+    mock: bool,
+) -> tuple:
+    """Deep research for video discovery via sonar-deep-research (deep mode only)."""
+    if mock:
+        return load_fixture("perplexity_video_sample.json"), None
+    try:
+        raw = perplexity_video.search_videos_deep(client, topic, from_date, to_date, depth=depth)
+        return raw, None
+    except openrouter_client.OpenRouterError as e:
+        return None, f"Perplexity Video Deep Research error: {e}"
+    except Exception as e:
+        return None, f"{type(e).__name__}: {e}"
+
+
 def _search_perplexity_discussions(
     client: openrouter_client.OpenRouterClient,
     topic: str,
@@ -258,6 +278,7 @@ def run_research(
     run_reddit = has_openrouter and resolved_sources in ("full", "perplexity", "reddit")
     run_news = has_openrouter and resolved_sources in ("full", "perplexity", "news")
     run_video = has_openrouter and resolved_sources in ("full", "perplexity")
+    run_video_deep = run_video and depth == "deep"
     run_discussions = has_openrouter and resolved_sources in ("full", "perplexity")
     run_x = has_xai and resolved_sources in ("full", "x")
     run_hn = True  # HN is always free
@@ -266,12 +287,13 @@ def run_research(
     raw = {
         "perplexity_web": None, "perplexity_deep": None,
         "perplexity_reddit": None, "perplexity_news": None,
-        "perplexity_video": None, "perplexity_discussions": None,
+        "perplexity_video": None, "perplexity_video_deep": None,
+        "perplexity_discussions": None,
         "xai": None, "hn": None,
     }
     errors = {
         "reddit": None, "x": None, "hn": None,
-        "news": None, "web": None, "video": None,
+        "news": None, "web": None, "video": None, "video_deep": None,
         "discussions": None, "deep": None,
     }
 
@@ -311,6 +333,11 @@ def run_research(
                 _search_perplexity_video, or_client, topic, from_date, to_date, depth, mock
             )
 
+        if run_video_deep:
+            futures["perplexity_video_deep"] = executor.submit(
+                _search_perplexity_video_deep, or_client, topic, from_date, to_date, depth, mock
+            )
+
         if run_discussions:
             futures["perplexity_discussions"] = executor.submit(
                 _search_perplexity_discussions, or_client, topic, from_date, to_date, depth, mock
@@ -339,7 +366,8 @@ def run_research(
                     err_key = {
                         "perplexity_web": "web", "perplexity_deep": "deep",
                         "perplexity_reddit": "reddit", "perplexity_news": "news",
-                        "perplexity_video": "video", "perplexity_discussions": "discussions",
+                        "perplexity_video": "video", "perplexity_video_deep": "video_deep",
+                        "perplexity_discussions": "discussions",
                         "xai": "x", "hn": "hn",
                     }.get(key, key)
                     errors[err_key] = error
@@ -349,7 +377,8 @@ def run_research(
                 err_key = {
                     "perplexity_web": "web", "perplexity_deep": "deep",
                     "perplexity_reddit": "reddit", "perplexity_news": "news",
-                    "perplexity_video": "video", "perplexity_discussions": "discussions",
+                    "perplexity_video": "video", "perplexity_video_deep": "video_deep",
+                    "perplexity_discussions": "discussions",
                     "xai": "x", "hn": "hn",
                 }.get(key, key)
                 errors[err_key] = f"{type(e).__name__}: {e}"
@@ -371,6 +400,18 @@ def run_research(
         progress.end_news(len(news_items_raw))
 
     video_items_raw = perplexity_video.parse_video_results(raw["perplexity_video"] or {}) if raw["perplexity_video"] else []
+
+    # Merge video deep research items (deep mode only)
+    if raw.get("perplexity_video_deep"):
+        deep_video_items = perplexity_video.parse_video_deep_research(raw["perplexity_video_deep"])
+        if deep_video_items:
+            existing_urls = {item["url"] for item in video_items_raw}
+            for dv_item in deep_video_items:
+                if dv_item["url"] not in existing_urls:
+                    dv_item["id"] = f"V{len(video_items_raw)+1}"
+                    video_items_raw.append(dv_item)
+                    existing_urls.add(dv_item["url"])
+
     if progress and run_video:
         progress.end_videos(len(video_items_raw))
 

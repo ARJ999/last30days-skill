@@ -27,7 +27,7 @@ The orchestrator (`last30days.py`) coordinates discovery, enrichment, normalizat
 - **perplexity_reddit.py**: Reddit search via sonar-pro-search with search_domain_filter
 - **perplexity_news.py**: News search via sonar-pro-search
 - **perplexity_web.py**: Web search (sonar-pro-search for items + sonar-deep-research for AI summary)
-- **perplexity_video.py**: Video search via sonar-pro-search with domain filter
+- **perplexity_video.py**: Video search (sonar-pro-search for items + sonar-deep-research for deep video discovery in `--deep` mode)
 - **perplexity_discussions.py**: Discussion search via sonar-pro-search with forum domain filter
 
 ### Source Modules (Other APIs)
@@ -46,7 +46,7 @@ The orchestrator (`last30days.py`) coordinates discovery, enrichment, normalizat
 
 ### Perplexity API (via OpenRouter)
 - **sonar-pro-search**: Focused agentic search for Reddit, News, Videos, Discussions, Web items
-- **sonar-deep-research**: Multi-step autonomous research for AI summary + citations
+- **sonar-deep-research**: Multi-step autonomous research for AI summary + citations, and video-specific deep discovery (`--deep` mode)
 - **Parameters**: `search_domain_filter`, `search_recency_filter`, `search_after_date_filter`, `search_before_date_filter`, `search_context_size`
 
 ### xAI API (X/Twitter)

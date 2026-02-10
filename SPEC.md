@@ -2,11 +2,11 @@
 
 ## Overview
 
-`last30days` is a Claude Code skill that researches a given topic across 7 sources: Reddit (via Brave Search), X/Twitter (via xAI), HackerNews (via Algolia), News, Web, Videos, and Forum Discussions (via Brave Search). It enforces a strict 30-day recency window, popularity-aware ranking, and produces actionable outputs.
+`last30days` is a Claude Code skill that researches a given topic across 7 sources: Reddit (via Perplexity), X/Twitter (via xAI), HackerNews (via Algolia), News, Web, Videos, and Forum Discussions (via Perplexity). It enforces a strict 30-day recency window, popularity-aware ranking, and produces actionable outputs.
 
 The skill operates in four modes depending on available API keys:
-- **Full** (BRAVE_API_KEY + XAI_API_KEY): All 7 sources with AI summary
-- **Brave** (BRAVE_API_KEY only): Reddit, HN, News, Web, Videos, Discussions (6 sources)
+- **Full** (OPENROUTER_API_KEY + XAI_API_KEY): All 7 sources with AI summary
+- **Perplexity** (OPENROUTER_API_KEY only): Reddit, HN, News, Web, Videos, Discussions (6 sources)
 - **X** (XAI_API_KEY only): X + HN only
 - **HN-Only** (no keys): HackerNews only (free, always available)
 
@@ -22,13 +22,13 @@ The orchestrator (`last30days.py`) coordinates discovery, enrichment, normalizat
 - **models.py**: xAI model auto-selection (prefers grok-4-1-fast-reasoning) with daily caching
 - **schema.py**: Dataclass schemas for all 7 item types + Report + DataQuality
 
-### Source Modules (Brave Search API)
-- **brave_client.py**: Shared Brave API HTTP client with auth, rate limiting, error mapping
-- **brave_web.py**: General web search + discussions + FAQ + infobox + summarizer key + schema extraction + deep results
-- **brave_reddit.py**: Reddit discovery via `site:reddit.com` operator with custom goggles
-- **brave_news.py**: News search using dedicated `/news/search` endpoint
-- **brave_video.py**: Video search using dedicated `/videos/search` endpoint
-- **brave_summarizer.py**: Two-step AI summarizer (free, not billed separately)
+### Source Modules (Perplexity via OpenRouter)
+- **openrouter_client.py**: OpenRouter API client with auth, rate limiting, Perplexity param passthrough
+- **perplexity_reddit.py**: Reddit search via sonar-pro-search with search_domain_filter
+- **perplexity_news.py**: News search via sonar-pro-search
+- **perplexity_web.py**: Web search (sonar-pro-search for items + sonar-deep-research for AI summary)
+- **perplexity_video.py**: Video search via sonar-pro-search with domain filter
+- **perplexity_discussions.py**: Discussion search via sonar-pro-search with forum domain filter
 
 ### Source Modules (Other APIs)
 - **xai_x.py**: xAI Responses API + x_search with native date/media params for X/Twitter
@@ -44,18 +44,10 @@ The orchestrator (`last30days.py`) coordinates discovery, enrichment, normalizat
 
 ## Source Strategy
 
-### Brave Search API (Pro AI Plan)
-- **Web Search**: `GET /res/v1/web/search` with `freshness`, `extra_snippets`, `summary`, `result_filter`, `spellcheck`, `search_lang`, `country`, `goggles` (default goggles: boost GitHub/dev.to/StackOverflow, discard Pinterest)
-- **News Search**: `GET /res/v1/news/search` with `freshness`, `count` up to 50, `spellcheck`, `search_lang`, `country`
-- **Video Search**: `GET /res/v1/videos/search` with `freshness`, `spellcheck`, `search_lang`, `country`
-- **Summarizer**: `GET /res/v1/summarizer/search` with `key` from web search (free, `entity_info` enabled)
-- **Reddit**: Web search with `site:reddit.com` operator + custom goggles
-- **Discussions**: Extracted from web search `result_filter=discussions`
-- **FAQ/Infobox**: Extracted from web search `result_filter=faq,infobox`
-- **Schema-Enriched Results**: Extracts `rating`, `review`, `article`, `product`, `book`, `recipe`, `creative_work`, `movie`, `music_recording`, `qa` from web results
-- **Deep Results**: Extracts nested `buttons` (sitelinks), `news`, `social`, `videos` from web result `deep_results` field
-- **Spellcheck**: Enabled on all endpoints for better results with typos
-- **Localization**: Optional `BRAVE_SEARCH_LANG` and `BRAVE_COUNTRY` config
+### Perplexity API (via OpenRouter)
+- **sonar-pro-search**: Focused agentic search for Reddit, News, Videos, Discussions, Web items
+- **sonar-deep-research**: Multi-step autonomous research for AI summary + citations
+- **Parameters**: `search_domain_filter`, `search_recency_filter`, `search_after_date_filter`, `search_before_date_filter`, `search_context_size`
 
 ### xAI API (X/Twitter)
 - Uses Responses API (`/v1/responses`) with `x_search` agent tool
@@ -80,7 +72,7 @@ The `engagement_verified` flag indicates trustworthy engagement data from the so
 - **Reddit**: `True` after enrichment via `reddit_enrich.py` (fetches real score, upvote_ratio, num_comments from Reddit JSON API). `False` if enrichment fails or thread is deleted.
 - **X/Twitter**: `True` if xAI returns at least likes or reposts data. `False` if no engagement data in response.
 - **HN**: Always `True` (Algolia API always returns verified points and comment counts).
-- **News/Web/Videos/Discussions**: Always `False` (no engagement data available from Brave).
+- **News/Web/Videos/Discussions**: Always `False` (no engagement data available from Perplexity).
 
 Scoring bonus: +8 points for `engagement_verified=True`, -15 for unknown/missing engagement.
 
@@ -104,10 +96,7 @@ Default engagement score for items without data: 20.
 
 ### Web (relevance-focused, no engagement)
 - **55%** relevance + **45%** recency - **10pt** source penalty
-- +5 for schema data presence (boolean `has_schema_data`)
-- +3 for rich schema extraction (rating, review, product, etc.)
-- +3 for deep results (sitelinks, nested news/social/videos)
-- +3 for extra_snippets (additional text excerpts)
+- +5 for citation bonus
 
 ### Videos (balanced, no engagement)
 - **50%** relevance + **50%** recency
@@ -140,9 +129,7 @@ Each report includes a `DataQuality` object with transparency metrics:
 - **avg_recency_days**: Average age of items in days
 - **sources_available**: List of sources that returned data
 - **sources_failed**: List of sources that errored
-- **has_summary**: Whether Brave AI Summary is available
-- **has_infobox**: Whether Knowledge Panel is available
-- **faq_count**: Number of FAQ entries from Brave
+- **has_summary**: Whether Perplexity Deep Research is available
 
 ## Embedding in Other Skills
 
@@ -191,10 +178,12 @@ All outputs are written to `~/.local/share/last30days/out/`:
 - `report.md` - Human-readable full report with all 7 sources
 - `report.json` - Normalized data with scores for all sources
 - `last30days.context.md` - Compact reusable snippet for other skills
-- `raw_brave_web.json` - Raw Brave Web Search API response
-- `raw_brave_reddit.json` - Raw Brave Reddit search response
-- `raw_brave_news.json` - Raw Brave News Search API response
-- `raw_brave_video.json` - Raw Brave Video Search API response
+- `raw_perplexity_web.json` - Raw Perplexity Web search response
+- `raw_perplexity_reddit.json` - Raw Perplexity Reddit search response
+- `raw_perplexity_news.json` - Raw Perplexity News search response
+- `raw_perplexity_video.json` - Raw Perplexity Video search response
+- `raw_perplexity_deep.json` - Raw Perplexity Deep Research response
+- `raw_perplexity_discussions.json` - Raw Perplexity Discussions search response
 - `raw_xai.json` - Raw xAI API response
 - `raw_hn.json` - Raw HN Algolia API response
 - `raw_reddit_threads_enriched.json` - Enriched Reddit thread data with engagement
@@ -205,7 +194,7 @@ Zero external Python dependencies. Uses only Python stdlib:
 - `urllib.request`, `urllib.parse`, `urllib.error` - HTTP
 - `json` - Serialization
 - `hashlib` - Cache keys
-- `concurrent.futures` - Parallel execution (up to 6 threads)
+- `concurrent.futures` - Parallel execution (up to 8 threads)
 - `dataclasses` - Schema definitions
 - `datetime`, `time` - Date handling
 - `pathlib` - File paths
@@ -219,7 +208,7 @@ Config file: `~/.config/last30days/.env`
 
 ```env
 # Required for full research capability
-BRAVE_API_KEY=your-brave-search-api-key
+OPENROUTER_API_KEY=your-openrouter-api-key
 
 # Required for X/Twitter research
 XAI_API_KEY=your-xai-api-key
@@ -227,10 +216,6 @@ XAI_API_KEY=your-xai-api-key
 # Optional: xAI model selection
 XAI_MODEL_POLICY=latest        # latest (auto) or stable
 XAI_MODEL_PIN=grok-4-1-fast-reasoning    # Pin to specific model
-
-# Optional: Brave localization
-BRAVE_SEARCH_LANG=en           # Language for search results
-BRAVE_COUNTRY=us               # Country for localization
 ```
 
 Environment variables override `.env` file values.

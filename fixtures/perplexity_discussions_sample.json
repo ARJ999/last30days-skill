@@ -1,0 +1,31 @@
+{
+  "id": "gen-fixture-discussions",
+  "model": "perplexity/sonar-pro-search",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\n  \"items\": [\n    {\n      \"title\": \"How to configure test topic for production?\",\n      \"url\": \"https://stackoverflow.com/questions/12345678/how-to-configure-test-topic\",\n      \"forum_name\": \"Stack Overflow\",\n      \"date\": \"2026-01-19\",\n      \"snippet\": \"Detailed question with accepted answer about production configuration of test topic.\",\n      \"relevance\": 0.88,\n      \"why_relevant\": \"Highly-voted SO question with accepted answer on production setup\"\n    },\n    {\n      \"title\": \"Test Topic performance issues on large datasets\",\n      \"url\": \"https://discuss.python.org/t/test-topic-performance/98765\",\n      \"forum_name\": \"Python Discuss\",\n      \"date\": \"2026-01-12\",\n      \"snippet\": \"Community discussion about performance optimization techniques for test topic.\",\n      \"relevance\": 0.80,\n      \"why_relevant\": \"Active discussion with practical performance optimization tips\"\n    }\n  ]\n}",
+        "annotations": [
+          {
+            "type": "url_citation",
+            "url": "https://stackoverflow.com/questions/12345678/how-to-configure-test-topic",
+            "title": "How to configure test topic for production?",
+            "content": "Detailed question with accepted answer"
+          }
+        ]
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "citations": [
+    "https://stackoverflow.com/questions/12345678/how-to-configure-test-topic",
+    "https://discuss.python.org/t/test-topic-performance/98765"
+  ],
+  "usage": {
+    "prompt_tokens": 185,
+    "completion_tokens": 260,
+    "total_tokens": 445
+  }
+}

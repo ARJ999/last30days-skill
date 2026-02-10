@@ -49,14 +49,13 @@ def get_config() -> Dict[str, str]:
 
     # Environment variables override .env
     env_keys = [
-        "BRAVE_API_KEY",
-        "BRAVE_SEARCH_LANG",
-        "BRAVE_COUNTRY",
+        "OPENROUTER_API_KEY",
         "XAI_API_KEY",
         "XAI_MODEL_POLICY",
         "XAI_MODEL_PIN",
         # Legacy keys (for migration detection)
         "OPENAI_API_KEY",
+        "BRAVE_API_KEY",
     ]
 
     for key in env_keys:
@@ -74,19 +73,19 @@ def get_available_sources(config: Dict[str, str]) -> str:
         config: Configuration dict
 
     Returns:
-        Source availability: 'full', 'brave', 'x', or 'hn'
+        Source availability: 'full', 'perplexity', 'x', or 'hn'
     """
-    has_brave = bool(config.get("BRAVE_API_KEY"))
+    has_openrouter = bool(config.get("OPENROUTER_API_KEY"))
     has_xai = bool(config.get("XAI_API_KEY"))
 
-    if has_brave and has_xai:
-        return "full"      # All sources: Reddit + X + HN + News + Web + Videos
-    elif has_brave:
-        return "brave"     # Reddit + HN + News + Web + Videos (no X)
+    if has_openrouter and has_xai:
+        return "full"          # All sources: Reddit + X + HN + News + Web + Videos + Discussions
+    elif has_openrouter:
+        return "perplexity"    # Reddit + HN + News + Web + Videos + Discussions (no X)
     elif has_xai:
-        return "x"         # X + HN only
+        return "x"             # X + HN only
     else:
-        return "hn"        # HN only (free, always available)
+        return "hn"            # HN only (free, always available)
 
 
 def validate_sources(
@@ -105,8 +104,8 @@ def validate_sources(
     if requested == "auto":
         if available == "full":
             return "full", None
-        elif available == "brave":
-            return "brave", None
+        elif available == "perplexity":
+            return "perplexity", None
         elif available == "x":
             return "x", None
         else:
@@ -115,17 +114,17 @@ def validate_sources(
     if requested == "all":
         if available == "full":
             return "full", None
-        elif available == "brave":
-            return "brave", "XAI_API_KEY not set. Running without X/Twitter."
+        elif available == "perplexity":
+            return "perplexity", "XAI_API_KEY not set. Running without X/Twitter."
         elif available == "x":
-            return "x", "BRAVE_API_KEY not set. Running X + HN only."
+            return "x", "OPENROUTER_API_KEY not set. Running X + HN only."
         else:
             return "hn", "No API keys set. Running HN only."
 
     if requested == "reddit":
-        if available in ("full", "brave"):
+        if available in ("full", "perplexity"):
             return "reddit", None
-        return "hn", "BRAVE_API_KEY required for Reddit search."
+        return "hn", "OPENROUTER_API_KEY required for Reddit search."
 
     if requested == "x":
         if available in ("full", "x"):
@@ -133,14 +132,14 @@ def validate_sources(
         return "hn", "XAI_API_KEY required for X/Twitter search."
 
     if requested == "news":
-        if available in ("full", "brave"):
+        if available in ("full", "perplexity"):
             return "news", None
-        return "hn", "BRAVE_API_KEY required for News search."
+        return "hn", "OPENROUTER_API_KEY required for News search."
 
     if requested == "web":
-        if available in ("full", "brave"):
+        if available in ("full", "perplexity"):
             return "web", None
-        return "hn", "BRAVE_API_KEY required for Web search."
+        return "hn", "OPENROUTER_API_KEY required for Web search."
 
     return "hn", f"Unknown source mode: {requested}"
 
@@ -149,15 +148,15 @@ def get_missing_keys(config: Dict[str, str]) -> str:
     """Determine which API keys are missing for promo messaging.
 
     Returns:
-        'both', 'brave', 'x', or 'none'
+        'both', 'openrouter', 'x', or 'none'
     """
-    has_brave = bool(config.get("BRAVE_API_KEY"))
+    has_openrouter = bool(config.get("OPENROUTER_API_KEY"))
     has_xai = bool(config.get("XAI_API_KEY"))
 
-    if not has_brave and not has_xai:
+    if not has_openrouter and not has_xai:
         return "both"
-    elif not has_brave:
-        return "brave"
+    elif not has_openrouter:
+        return "openrouter"
     elif not has_xai:
         return "x"
     else:
@@ -165,16 +164,23 @@ def get_missing_keys(config: Dict[str, str]) -> str:
 
 
 def check_legacy_config(config: Dict[str, str]) -> Optional[str]:
-    """Check for legacy OpenAI config and return migration message.
+    """Check for legacy config keys and return migration message.
 
     Returns:
         Migration message or None
     """
-    if config.get("OPENAI_API_KEY") and not config.get("BRAVE_API_KEY"):
+    if config.get("BRAVE_API_KEY") and not config.get("OPENROUTER_API_KEY"):
+        return (
+            "[MIGRATION] Your config uses BRAVE_API_KEY which is no longer needed.\n"
+            "Replace it with OPENROUTER_API_KEY for Perplexity-powered research.\n"
+            "Get your key at: https://openrouter.ai/settings/keys\n"
+            f"Edit: {ENV_FILE}"
+        )
+    if config.get("OPENAI_API_KEY") and not config.get("OPENROUTER_API_KEY"):
         return (
             "[MIGRATION] Your config uses OPENAI_API_KEY which is no longer needed.\n"
-            "Replace it with BRAVE_API_KEY for superior research capabilities.\n"
-            "Get your key at: https://api-dashboard.search.brave.com\n"
+            "Replace it with OPENROUTER_API_KEY for Perplexity-powered research.\n"
+            "Get your key at: https://openrouter.ai/settings/keys\n"
             f"Edit: {ENV_FILE}"
         )
     return None

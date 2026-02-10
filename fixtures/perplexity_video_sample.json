@@ -1,0 +1,31 @@
+{
+  "id": "gen-fixture-video",
+  "model": "perplexity/sonar-pro-search",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\n  \"items\": [\n    {\n      \"title\": \"Test Topic Deep Dive - Full Tutorial 2026\",\n      \"url\": \"https://www.youtube.com/watch?v=abc123\",\n      \"creator\": \"TechChannel\",\n      \"date\": \"2026-01-21\",\n      \"duration\": \"45:30\",\n      \"snippet\": \"Complete tutorial covering test topic from basics to advanced concepts.\",\n      \"thumbnail_url\": \"https://i.ytimg.com/vi/abc123/hqdefault.jpg\",\n      \"relevance\": 0.90,\n      \"why_relevant\": \"Comprehensive recent tutorial by popular tech creator\"\n    },\n    {\n      \"title\": \"Test Topic: What Changed This Month\",\n      \"url\": \"https://www.youtube.com/watch?v=def456\",\n      \"creator\": \"DevNews\",\n      \"date\": \"2026-01-14\",\n      \"duration\": \"12:15\",\n      \"snippet\": \"Monthly roundup of all changes and updates in test topic.\",\n      \"thumbnail_url\": \"https://i.ytimg.com/vi/def456/hqdefault.jpg\",\n      \"relevance\": 0.85,\n      \"why_relevant\": \"Monthly update summary with key changes highlighted\"\n    }\n  ]\n}",
+        "annotations": [
+          {
+            "type": "url_citation",
+            "url": "https://www.youtube.com/watch?v=abc123",
+            "title": "Test Topic Deep Dive - Full Tutorial 2026",
+            "content": "Complete tutorial covering test topic"
+          }
+        ]
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "citations": [
+    "https://www.youtube.com/watch?v=abc123",
+    "https://www.youtube.com/watch?v=def456"
+  ],
+  "usage": {
+    "prompt_tokens": 190,
+    "completion_tokens": 280,
+    "total_tokens": 470
+  }
+}

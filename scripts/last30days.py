@@ -2,8 +2,8 @@
 """
 last30days - Research a topic from the last 30 days across 7 sources.
 
-Sources: Reddit (Brave), X (xAI), HackerNews (Algolia), News (Brave),
-         Web (Brave), Videos (Brave), Discussions (Brave)
+Sources: Reddit (Perplexity), X (xAI), HackerNews (Algolia), News (Perplexity),
+         Web (Perplexity), Videos (Perplexity), Discussions (Perplexity)
 
 Usage:
     python3 last30days.py <topic> [options]
@@ -31,12 +31,6 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from lib import (
-    brave_client,
-    brave_news,
-    brave_reddit,
-    brave_summarizer,
-    brave_video,
-    brave_web,
     cache,
     dates,
     dedupe,
@@ -45,6 +39,12 @@ from lib import (
     http,
     models,
     normalize,
+    openrouter_client,
+    perplexity_discussions,
+    perplexity_news,
+    perplexity_reddit,
+    perplexity_video,
+    perplexity_web,
     reddit_enrich,
     render,
     schema,
@@ -63,82 +63,122 @@ def load_fixture(name: str) -> dict:
     return {}
 
 
-def _search_brave_web(
-    client: brave_client.BraveClient,
+def _search_perplexity_web(
+    client: openrouter_client.OpenRouterClient,
     topic: str,
     from_date: str,
     to_date: str,
     depth: str,
     mock: bool,
 ) -> tuple:
-    """Search Brave Web for general results + discussions + FAQ + infobox + summarizer key."""
+    """Search for web results via Perplexity sonar-pro-search."""
     if mock:
-        return load_fixture("brave_web_sample.json"), None
+        return load_fixture("perplexity_web_items_sample.json"), None
     try:
-        raw = brave_web.search_web(client, topic, from_date, to_date, depth=depth)
+        raw = perplexity_web.search_web_items(client, topic, from_date, to_date, depth=depth)
         return raw, None
-    except brave_client.BraveError as e:
-        return None, f"Brave Web error: {e}"
+    except openrouter_client.OpenRouterError as e:
+        return None, f"Perplexity Web error: {e}"
     except Exception as e:
         return None, f"{type(e).__name__}: {e}"
 
 
-def _search_brave_reddit(
-    client: brave_client.BraveClient,
+def _search_perplexity_deep(
+    client: openrouter_client.OpenRouterClient,
     topic: str,
     from_date: str,
     to_date: str,
     depth: str,
     mock: bool,
 ) -> tuple:
-    """Search Brave for Reddit threads."""
+    """Run deep research via Perplexity sonar-deep-research for AI summary."""
     if mock:
-        return load_fixture("brave_reddit_sample.json"), None
+        return load_fixture("perplexity_deep_research_sample.json"), None
     try:
-        raw = brave_reddit.search_reddit(client, topic, from_date, to_date, depth=depth)
+        raw = perplexity_web.search_web_deep(client, topic, from_date, to_date, depth=depth)
         return raw, None
-    except brave_client.BraveError as e:
-        return None, f"Brave Reddit error: {e}"
+    except openrouter_client.OpenRouterError as e:
+        return None, f"Perplexity Deep Research error: {e}"
     except Exception as e:
         return None, f"{type(e).__name__}: {e}"
 
 
-def _search_brave_news(
-    client: brave_client.BraveClient,
+def _search_perplexity_reddit(
+    client: openrouter_client.OpenRouterClient,
     topic: str,
     from_date: str,
     to_date: str,
     depth: str,
     mock: bool,
 ) -> tuple:
-    """Search Brave News."""
+    """Search for Reddit threads via Perplexity."""
     if mock:
-        return load_fixture("brave_news_sample.json"), None
+        return load_fixture("perplexity_reddit_sample.json"), None
     try:
-        raw = brave_news.search_news(client, topic, from_date, to_date, depth=depth)
+        raw = perplexity_reddit.search_reddit(client, topic, from_date, to_date, depth=depth)
         return raw, None
-    except brave_client.BraveError as e:
-        return None, f"Brave News error: {e}"
+    except openrouter_client.OpenRouterError as e:
+        return None, f"Perplexity Reddit error: {e}"
     except Exception as e:
         return None, f"{type(e).__name__}: {e}"
 
 
-def _search_brave_video(
-    client: brave_client.BraveClient,
+def _search_perplexity_news(
+    client: openrouter_client.OpenRouterClient,
     topic: str,
     from_date: str,
     to_date: str,
     depth: str,
     mock: bool,
 ) -> tuple:
-    """Search Brave Videos."""
+    """Search for news via Perplexity."""
     if mock:
-        return load_fixture("brave_video_sample.json"), None
+        return load_fixture("perplexity_news_sample.json"), None
     try:
-        raw = brave_video.search_videos(client, topic, from_date, to_date, depth=depth)
+        raw = perplexity_news.search_news(client, topic, from_date, to_date, depth=depth)
         return raw, None
-    except brave_client.BraveError as e:
-        return None, f"Brave Video error: {e}"
+    except openrouter_client.OpenRouterError as e:
+        return None, f"Perplexity News error: {e}"
+    except Exception as e:
+        return None, f"{type(e).__name__}: {e}"
+
+
+def _search_perplexity_video(
+    client: openrouter_client.OpenRouterClient,
+    topic: str,
+    from_date: str,
+    to_date: str,
+    depth: str,
+    mock: bool,
+) -> tuple:
+    """Search for videos via Perplexity."""
+    if mock:
+        return load_fixture("perplexity_video_sample.json"), None
+    try:
+        raw = perplexity_video.search_videos(client, topic, from_date, to_date, depth=depth)
+        return raw, None
+    except openrouter_client.OpenRouterError as e:
+        return None, f"Perplexity Video error: {e}"
+    except Exception as e:
+        return None, f"{type(e).__name__}: {e}"
+
+
+def _search_perplexity_discussions(
+    client: openrouter_client.OpenRouterClient,
+    topic: str,
+    from_date: str,
+    to_date: str,
+    depth: str,
+    mock: bool,
+) -> tuple:
+    """Search for discussions via Perplexity."""
+    if mock:
+        return load_fixture("perplexity_discussions_sample.json"), None
+    try:
+        raw = perplexity_discussions.search_discussions(client, topic, from_date, to_date, depth=depth)
+        return raw, None
+    except openrouter_client.OpenRouterError as e:
+        return None, f"Perplexity Discussions error: {e}"
     except Exception as e:
         return None, f"{type(e).__name__}: {e}"
 
@@ -205,64 +245,75 @@ def run_research(
 
     Returns dict with all raw responses, parsed items, and errors.
     """
-    has_brave = bool(config.get("BRAVE_API_KEY")) or mock
+    has_openrouter = bool(config.get("OPENROUTER_API_KEY")) or mock
     has_xai = bool(config.get("XAI_API_KEY")) or mock
 
-    brave = None
-    if has_brave and not mock:
-        brave = brave_client.BraveClient(
-            config["BRAVE_API_KEY"],
-            search_lang=config.get("BRAVE_SEARCH_LANG"),
-            country=config.get("BRAVE_COUNTRY"),
-        )
+    or_client = None
+    if has_openrouter and not mock:
+        or_client = openrouter_client.OpenRouterClient(config["OPENROUTER_API_KEY"])
 
     # Determine which searches to run based on resolved sources
-    run_brave_web = has_brave and resolved_sources in ("full", "brave", "web")
-    run_brave_reddit = has_brave and resolved_sources in ("full", "brave", "reddit")
-    run_brave_news = has_brave and resolved_sources in ("full", "brave", "news")
-    run_brave_video = has_brave and resolved_sources in ("full", "brave")
+    run_web = has_openrouter and resolved_sources in ("full", "perplexity", "web")
+    run_deep = has_openrouter and resolved_sources in ("full", "perplexity", "web")
+    run_reddit = has_openrouter and resolved_sources in ("full", "perplexity", "reddit")
+    run_news = has_openrouter and resolved_sources in ("full", "perplexity", "news")
+    run_video = has_openrouter and resolved_sources in ("full", "perplexity")
+    run_discussions = has_openrouter and resolved_sources in ("full", "perplexity")
     run_x = has_xai and resolved_sources in ("full", "x")
     run_hn = True  # HN is always free
 
     # Raw responses
     raw = {
-        "brave_web": None, "brave_reddit": None, "brave_news": None,
-        "brave_video": None, "xai": None, "hn": None,
+        "perplexity_web": None, "perplexity_deep": None,
+        "perplexity_reddit": None, "perplexity_news": None,
+        "perplexity_video": None, "perplexity_discussions": None,
+        "xai": None, "hn": None,
     }
     errors = {
         "reddit": None, "x": None, "hn": None,
         "news": None, "web": None, "video": None,
+        "discussions": None, "deep": None,
     }
 
-    # Phase 1: Parallel search (up to 6 threads)
+    # Phase 1: Parallel search (up to 8 threads)
     futures = {}
-    with ThreadPoolExecutor(max_workers=6) as executor:
-        if run_brave_web:
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        if run_web:
             if progress:
                 progress.start_web()
-            futures["brave_web"] = executor.submit(
-                _search_brave_web, brave, topic, from_date, to_date, depth, mock
+            futures["perplexity_web"] = executor.submit(
+                _search_perplexity_web, or_client, topic, from_date, to_date, depth, mock
             )
 
-        if run_brave_reddit:
+        if run_deep:
+            futures["perplexity_deep"] = executor.submit(
+                _search_perplexity_deep, or_client, topic, from_date, to_date, depth, mock
+            )
+
+        if run_reddit:
             if progress:
                 progress.start_reddit()
-            futures["brave_reddit"] = executor.submit(
-                _search_brave_reddit, brave, topic, from_date, to_date, depth, mock
+            futures["perplexity_reddit"] = executor.submit(
+                _search_perplexity_reddit, or_client, topic, from_date, to_date, depth, mock
             )
 
-        if run_brave_news:
+        if run_news:
             if progress:
                 progress.start_news()
-            futures["brave_news"] = executor.submit(
-                _search_brave_news, brave, topic, from_date, to_date, depth, mock
+            futures["perplexity_news"] = executor.submit(
+                _search_perplexity_news, or_client, topic, from_date, to_date, depth, mock
             )
 
-        if run_brave_video:
+        if run_video:
             if progress:
                 progress.start_videos()
-            futures["brave_video"] = executor.submit(
-                _search_brave_video, brave, topic, from_date, to_date, depth, mock
+            futures["perplexity_video"] = executor.submit(
+                _search_perplexity_video, or_client, topic, from_date, to_date, depth, mock
+            )
+
+        if run_discussions:
+            futures["perplexity_discussions"] = executor.submit(
+                _search_perplexity_discussions, or_client, topic, from_date, to_date, depth, mock
             )
 
         if run_x:
@@ -285,10 +336,10 @@ def run_research(
                 result, error = future.result()
                 raw[key] = result
                 if error:
-                    # Map raw key to error key
                     err_key = {
-                        "brave_web": "web", "brave_reddit": "reddit",
-                        "brave_news": "news", "brave_video": "video",
+                        "perplexity_web": "web", "perplexity_deep": "deep",
+                        "perplexity_reddit": "reddit", "perplexity_news": "news",
+                        "perplexity_video": "video", "perplexity_discussions": "discussions",
                         "xai": "x", "hn": "hn",
                     }.get(key, key)
                     errors[err_key] = error
@@ -296,30 +347,31 @@ def run_research(
                         progress.show_error(error)
             except Exception as e:
                 err_key = {
-                    "brave_web": "web", "brave_reddit": "reddit",
-                    "brave_news": "news", "brave_video": "video",
+                    "perplexity_web": "web", "perplexity_deep": "deep",
+                    "perplexity_reddit": "reddit", "perplexity_news": "news",
+                    "perplexity_video": "video", "perplexity_discussions": "discussions",
                     "xai": "x", "hn": "hn",
                 }.get(key, key)
                 errors[err_key] = f"{type(e).__name__}: {e}"
                 if progress:
                     progress.show_error(f"{key} error: {e}")
 
-    # Show search completion for each source
-    web_items_raw = brave_web.parse_web_results(raw["brave_web"] or {}) if raw["brave_web"] else []
-    discussion_items_raw = brave_web.parse_discussions(raw["brave_web"] or {}) if raw["brave_web"] else []
-    if progress and run_brave_web:
+    # Parse results from each source
+    web_items_raw = perplexity_web.parse_web_results(raw["perplexity_web"] or {}) if raw["perplexity_web"] else []
+    discussion_items_raw = perplexity_discussions.parse_discussion_results(raw["perplexity_discussions"] or {}) if raw["perplexity_discussions"] else []
+    if progress and run_web:
         progress.end_web(len(web_items_raw), len(discussion_items_raw))
 
-    reddit_items_raw = brave_reddit.parse_reddit_results(raw["brave_reddit"] or {}) if raw["brave_reddit"] else []
-    if progress and run_brave_reddit:
+    reddit_items_raw = perplexity_reddit.parse_reddit_results(raw["perplexity_reddit"] or {}) if raw["perplexity_reddit"] else []
+    if progress and run_reddit:
         progress.end_reddit(len(reddit_items_raw))
 
-    news_items_raw = brave_news.parse_news_results(raw["brave_news"] or {}) if raw["brave_news"] else []
-    if progress and run_brave_news:
+    news_items_raw = perplexity_news.parse_news_results(raw["perplexity_news"] or {}) if raw["perplexity_news"] else []
+    if progress and run_news:
         progress.end_news(len(news_items_raw))
 
-    video_items_raw = brave_video.parse_video_results(raw["brave_video"] or {}) if raw["brave_video"] else []
-    if progress and run_brave_video:
+    video_items_raw = perplexity_video.parse_video_results(raw["perplexity_video"] or {}) if raw["perplexity_video"] else []
+    if progress and run_video:
         progress.end_videos(len(video_items_raw))
 
     x_items_raw = xai_x.parse_x_response(raw["xai"] or {}) if raw["xai"] else []
@@ -330,15 +382,22 @@ def run_research(
     if progress and run_hn:
         progress.end_hn(len(hn_items_raw))
 
-    # Extract Brave enrichment data (FAQ, infobox, summarizer key)
-    faq_items = brave_web.parse_faq(raw["brave_web"] or {}) if raw["brave_web"] else []
-    infobox_data = brave_web.parse_infobox(raw["brave_web"] or {}) if raw["brave_web"] else None
-    summarizer_key = brave_web.get_summarizer_key(raw["brave_web"] or {}) if raw["brave_web"] else None
+    # Parse deep research for AI summary + supplementary web items
+    deep_data = None
+    if raw["perplexity_deep"]:
+        deep_data = perplexity_web.parse_deep_research(raw["perplexity_deep"])
+        # Merge deep research citation items into web items (avoid duplicates)
+        if deep_data.get("web_items"):
+            existing_urls = {item["url"] for item in web_items_raw}
+            for deep_item in deep_data["web_items"]:
+                if deep_item["url"] not in existing_urls:
+                    deep_item["id"] = f"W{len(web_items_raw)+1}"
+                    web_items_raw.append(deep_item)
+                    existing_urls.add(deep_item["url"])
 
-    # Phase 2: Enrichment (Reddit threads + Summarizer)
+    # Phase 2: Enrichment (Reddit threads)
     raw_reddit_enriched = []
 
-    # Enrich Reddit items with real engagement data
     if reddit_items_raw:
         if progress:
             progress.start_reddit_enrich(1, len(reddit_items_raw))
@@ -372,15 +431,16 @@ def run_research(
         if progress:
             progress.end_reddit_enrich()
 
-    # Fetch AI summary (free - not billed separately)
+    # Build summary data from deep research
     summary_data = None
-    if summarizer_key and brave and not mock:
+    if deep_data and deep_data.get("summary"):
+        summary_data = {
+            "summary": deep_data["summary"],
+            "citations": deep_data.get("citations", []),
+            "followups": deep_data.get("followups", []),
+        }
         if progress:
-            progress.start_summarizer()
-        summary_response = brave_summarizer.fetch_summary(brave, summarizer_key)
-        summary_data = brave_summarizer.parse_summary_response(summary_response)
-        if progress:
-            progress.end_summarizer(summary_data and summary_data.get("summary") is not None)
+            progress.end_summarizer(True)
 
     return {
         "raw": raw,
@@ -392,8 +452,8 @@ def run_research(
         "web_items": web_items_raw,
         "video_items": video_items_raw,
         "discussion_items": discussion_items_raw,
-        "faq_items": faq_items,
-        "infobox": infobox_data,
+        "faq_items": [],
+        "infobox": None,
         "summary_data": summary_data,
         "raw_reddit_enriched": raw_reddit_enriched,
     }
@@ -525,7 +585,7 @@ def main():
     # Load config
     config = env.get_config()
 
-    # Check for legacy OpenAI config
+    # Check for legacy config
     legacy_msg = env.check_legacy_config(config)
     if legacy_msg:
         print(legacy_msg, file=sys.stderr)
@@ -572,7 +632,7 @@ def main():
     if missing_keys != "none":
         progress.show_promo(missing_keys)
 
-    # Select models (xAI only now)
+    # Select models (xAI only)
     if args.mock:
         mock_xai_models = load_fixture("models_xai_sample.json").get("data", [])
         selected_models = models.get_models(
@@ -585,7 +645,7 @@ def main():
     # Determine mode string
     mode_map = {
         "full": "full",
-        "brave": "brave",
+        "perplexity": "perplexity",
         "reddit": "reddit-only",
         "x": "x-only",
         "news": "news-only",
@@ -624,7 +684,7 @@ def main():
     report.web_error = research["errors"]["web"]
     report.video_error = research["errors"]["video"]
 
-    # Attach Brave enrichment data
+    # Attach AI summary from deep research
     if research["summary_data"]:
         report.summary = research["summary_data"].get("summary")
         report.summary_citations = research["summary_data"].get("citations", [])
@@ -641,10 +701,12 @@ def main():
     # Write outputs
     render.write_outputs(
         report,
-        raw_brave_web=research["raw"].get("brave_web"),
-        raw_brave_reddit=research["raw"].get("brave_reddit"),
-        raw_brave_news=research["raw"].get("brave_news"),
-        raw_brave_video=research["raw"].get("brave_video"),
+        raw_perplexity_web=research["raw"].get("perplexity_web"),
+        raw_perplexity_deep=research["raw"].get("perplexity_deep"),
+        raw_perplexity_reddit=research["raw"].get("perplexity_reddit"),
+        raw_perplexity_news=research["raw"].get("perplexity_news"),
+        raw_perplexity_video=research["raw"].get("perplexity_video"),
+        raw_perplexity_discussions=research["raw"].get("perplexity_discussions"),
         raw_xai=research["raw"].get("xai"),
         raw_hn=research["raw"].get("hn"),
         raw_reddit_enriched=research["raw_reddit_enriched"],

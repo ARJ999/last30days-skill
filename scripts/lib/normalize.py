@@ -18,7 +18,7 @@ def filter_by_date_range(
 ) -> List[AnyItem]:
     """Hard filter: Remove items outside the date range.
 
-    Defense-in-depth safety net. Brave's freshness param is the primary filter.
+    Defense-in-depth safety net. Perplexity's recency filter is the primary filter.
     """
     result = []
     for item in items:
@@ -132,13 +132,13 @@ def normalize_hn_items(
 def normalize_news_items(
     items: List[Dict[str, Any]], from_date: str, to_date: str,
 ) -> List[schema.NewsItem]:
-    """Normalize raw Brave News items to schema."""
+    """Normalize raw Perplexity News items to schema."""
     normalized = []
     for item in items:
         date_str = item.get("date")
         date_confidence = dates.get_date_confidence(date_str, from_date, to_date)
         if date_str and date_confidence == "low":
-            date_confidence = "high"  # Trust Brave's page_age
+            date_confidence = "high"  # Trust Perplexity's date extraction
         normalized.append(schema.NewsItem(
             id=item.get("id", ""), title=item.get("title", ""),
             url=item.get("url", ""),
@@ -156,7 +156,7 @@ def normalize_news_items(
 def normalize_web_items(
     items: List[Dict[str, Any]], from_date: str, to_date: str,
 ) -> List[schema.WebItem]:
-    """Normalize raw Brave Web items to schema."""
+    """Normalize raw Perplexity Web items to schema."""
     normalized = []
     for item in items:
         date_str = item.get("date")
@@ -182,7 +182,7 @@ def normalize_web_items(
 def normalize_video_items(
     items: List[Dict[str, Any]], from_date: str, to_date: str,
 ) -> List[schema.VideoItem]:
-    """Normalize raw Brave Video items to schema."""
+    """Normalize raw Perplexity Video items to schema."""
     normalized = []
     for item in items:
         date_str = item.get("date")
@@ -207,7 +207,7 @@ def normalize_video_items(
 def normalize_discussion_items(
     items: List[Dict[str, Any]], from_date: str, to_date: str,
 ) -> List[schema.DiscussionItem]:
-    """Normalize raw Brave Discussion items to schema."""
+    """Normalize raw Perplexity Discussion items to schema."""
     normalized = []
     for item in items:
         date_str = item.get("date")

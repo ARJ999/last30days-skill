@@ -192,7 +192,7 @@ class HNItem:
 
 @dataclass
 class NewsItem:
-    """Normalized news article from Brave News Search."""
+    """Normalized news article from Perplexity News Search."""
     id: str
     title: str
     url: str
@@ -227,7 +227,7 @@ class NewsItem:
 
 @dataclass
 class WebItem:
-    """Normalized web result from Brave Web Search."""
+    """Normalized web result from Perplexity Web Search."""
     id: str
     title: str
     url: str
@@ -269,7 +269,7 @@ class WebItem:
 
 @dataclass
 class VideoItem:
-    """Normalized video result from Brave Video Search."""
+    """Normalized video result from Perplexity Video Search."""
     id: str
     title: str
     url: str
@@ -306,7 +306,7 @@ class VideoItem:
 
 @dataclass
 class DiscussionItem:
-    """Normalized discussion/forum result from Brave Discussions."""
+    """Normalized discussion/forum result from Perplexity Discussions Search."""
     id: str
     title: str
     url: str
@@ -391,13 +391,13 @@ class Report:
     x: List[XItem] = field(default_factory=list)
     hn: List[HNItem] = field(default_factory=list)
 
-    # Brave-powered sources
+    # Perplexity-powered sources
     news: List[NewsItem] = field(default_factory=list)
     web: List[WebItem] = field(default_factory=list)
     videos: List[VideoItem] = field(default_factory=list)
     discussions: List[DiscussionItem] = field(default_factory=list)
 
-    # Brave enrichment data
+    # Perplexity enrichment data
     summary: Optional[str] = None
     summary_citations: List[Dict] = field(default_factory=list)
     summary_followups: List[str] = field(default_factory=list)
@@ -441,7 +441,7 @@ class Report:
             'discussions': [d_.to_dict() for d_ in self.discussions],
         }
 
-        # Brave enrichment
+        # Perplexity enrichment
         if self.summary:
             d['summary'] = self.summary
         if self.summary_citations:

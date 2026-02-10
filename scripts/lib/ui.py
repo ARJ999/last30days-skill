@@ -115,8 +115,8 @@ PROMO_MESSAGE = f"""
 
 {Colors.DIM}Right now you're using HN only. Add API keys to unlock:{Colors.RESET}
 
-  {Colors.ORANGE}Brave Search{Colors.RESET} - Reddit, News, Web, Videos, Discussions, AI Summary
-     └─ Add BRAVE_API_KEY (get it at api-dashboard.search.brave.com)
+  {Colors.ORANGE}Perplexity (via OpenRouter){Colors.RESET} - Reddit, News, Web, Videos, Discussions, AI Summary
+     └─ Add OPENROUTER_API_KEY (get it at openrouter.ai/settings/keys)
 
   {Colors.CYAN}X (Twitter){Colors.RESET} - Real-time posts, likes, reposts from creators
      └─ Add XAI_API_KEY (uses xAI's live X search)
@@ -131,8 +131,8 @@ UNLOCK THE FULL POWER OF /last30days
 
 Right now you're using HN only. Add API keys to unlock:
 
-  Brave Search - Reddit, News, Web, Videos, Discussions, AI Summary
-     └─ Add BRAVE_API_KEY (get it at api-dashboard.search.brave.com)
+  Perplexity (via OpenRouter) - Reddit, News, Web, Videos, Discussions, AI Summary
+     └─ Add OPENROUTER_API_KEY (get it at openrouter.ai/settings/keys)
 
   X (Twitter) - Real-time posts, likes, reposts from creators
      └─ Add XAI_API_KEY (uses xAI's live X search)
@@ -142,8 +142,8 @@ Setup: Edit ~/.config/last30days/.env
 """
 
 PROMO_SINGLE_KEY = {
-    "brave": f"""
-{Colors.DIM}Tip: Add {Colors.ORANGE}BRAVE_API_KEY{Colors.RESET}{Colors.DIM} to ~/.config/last30days/.env for Reddit, News, Web, Videos & AI Summary!{Colors.RESET}
+    "openrouter": f"""
+{Colors.DIM}Tip: Add {Colors.ORANGE}OPENROUTER_API_KEY{Colors.RESET}{Colors.DIM} to ~/.config/last30days/.env for Reddit, News, Web, Videos & AI Summary!{Colors.RESET}
 """,
     "x": f"""
 {Colors.DIM}Tip: Add {Colors.CYAN}XAI_API_KEY{Colors.RESET}{Colors.DIM} to ~/.config/last30days/.env for X/Twitter data with real likes & reposts!{Colors.RESET}
@@ -151,7 +151,7 @@ PROMO_SINGLE_KEY = {
 }
 
 PROMO_SINGLE_KEY_PLAIN = {
-    "brave": "\nTip: Add BRAVE_API_KEY to ~/.config/last30days/.env for Reddit, News, Web, Videos & AI Summary!\n",
+    "openrouter": "\nTip: Add OPENROUTER_API_KEY to ~/.config/last30days/.env for Reddit, News, Web, Videos & AI Summary!\n",
     "x": "\nTip: Add XAI_API_KEY to ~/.config/last30days/.env for X/Twitter data with real likes & reposts!\n",
 }
 

@@ -1,0 +1,32 @@
+{
+  "id": "gen-fixture-news",
+  "model": "perplexity/sonar-pro-search",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\n  \"items\": [\n    {\n      \"title\": \"Test Topic Announces Major Update for 2026\",\n      \"url\": \"https://techcrunch.com/2026/01/22/test-topic-major-update\",\n      \"source_name\": \"TechCrunch\",\n      \"date\": \"2026-01-22\",\n      \"snippet\": \"Test topic has announced a significant update that brings new features and improvements.\",\n      \"relevance\": 0.95,\n      \"why_relevant\": \"Major product announcement from authoritative tech publication\"\n    },\n    {\n      \"title\": \"How Test Topic Is Changing the Industry\",\n      \"url\": \"https://www.theverge.com/2026/1/18/test-topic-industry-impact\",\n      \"source_name\": \"The Verge\",\n      \"date\": \"2026-01-18\",\n      \"snippet\": \"An analysis of how test topic is reshaping the industry landscape.\",\n      \"relevance\": 0.88,\n      \"why_relevant\": \"Industry analysis from major tech publication\"\n    },\n    {\n      \"title\": \"Test Topic Raises $50M in Series B\",\n      \"url\": \"https://www.bloomberg.com/news/2026-01-12/test-topic-funding\",\n      \"source_name\": \"Bloomberg\",\n      \"date\": \"2026-01-12\",\n      \"snippet\": \"Test topic secures significant funding to expand operations and development.\",\n      \"relevance\": 0.82,\n      \"why_relevant\": \"Business milestone reported by financial publication\"\n    }\n  ]\n}",
+        "annotations": [
+          {
+            "type": "url_citation",
+            "url": "https://techcrunch.com/2026/01/22/test-topic-major-update",
+            "title": "Test Topic Announces Major Update for 2026",
+            "content": "Test topic has announced a significant update"
+          }
+        ]
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "citations": [
+    "https://techcrunch.com/2026/01/22/test-topic-major-update",
+    "https://www.theverge.com/2026/1/18/test-topic-industry-impact",
+    "https://www.bloomberg.com/news/2026-01-12/test-topic-funding"
+  ],
+  "usage": {
+    "prompt_tokens": 180,
+    "completion_tokens": 320,
+    "total_tokens": 500
+  }
+}

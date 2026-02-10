@@ -1,0 +1,38 @@
+{
+  "id": "gen-fixture-reddit",
+  "model": "perplexity/sonar-pro-search",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\n  \"items\": [\n    {\n      \"title\": \"What's new in test topic this month?\",\n      \"url\": \"https://www.reddit.com/r/technology/comments/abc123/whats_new_in_test_topic/\",\n      \"subreddit\": \"technology\",\n      \"date\": \"2026-01-20\",\n      \"snippet\": \"Great discussion about recent developments in test topic with lots of community input.\",\n      \"relevance\": 0.92,\n      \"why_relevant\": \"Active community discussion on recent test topic developments\"\n    },\n    {\n      \"title\": \"PSA: Test topic best practices updated\",\n      \"url\": \"https://www.reddit.com/r/programming/comments/def456/psa_test_topic_best_practices/\",\n      \"subreddit\": \"programming\",\n      \"date\": \"2026-01-15\",\n      \"snippet\": \"Updated best practices for test topic based on community feedback and recent changes.\",\n      \"relevance\": 0.85,\n      \"why_relevant\": \"Community-driven best practices compilation\"\n    },\n    {\n      \"title\": \"My experience with test topic - 6 month review\",\n      \"url\": \"https://www.reddit.com/r/webdev/comments/ghi789/my_experience_with_test_topic/\",\n      \"subreddit\": \"webdev\",\n      \"date\": \"2026-01-10\",\n      \"snippet\": \"Detailed review of test topic after 6 months of daily use, including pros and cons.\",\n      \"relevance\": 0.78,\n      \"why_relevant\": \"In-depth user review with practical insights\"\n    }\n  ]\n}",
+        "annotations": [
+          {
+            "type": "url_citation",
+            "url": "https://www.reddit.com/r/technology/comments/abc123/whats_new_in_test_topic/",
+            "title": "What's new in test topic this month?",
+            "content": "Great discussion about recent developments"
+          },
+          {
+            "type": "url_citation",
+            "url": "https://www.reddit.com/r/programming/comments/def456/psa_test_topic_best_practices/",
+            "title": "PSA: Test topic best practices updated",
+            "content": "Updated best practices for test topic"
+          }
+        ]
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "citations": [
+    "https://www.reddit.com/r/technology/comments/abc123/whats_new_in_test_topic/",
+    "https://www.reddit.com/r/programming/comments/def456/psa_test_topic_best_practices/",
+    "https://www.reddit.com/r/webdev/comments/ghi789/my_experience_with_test_topic/"
+  ],
+  "usage": {
+    "prompt_tokens": 200,
+    "completion_tokens": 350,
+    "total_tokens": 550
+  }
+}
